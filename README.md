@@ -1,8 +1,13 @@
 # 💎 AI Investor - 多Agent价值投资分析系统
 
+> **AI Investor** is a multi-agent value investing analysis system for A-share stocks, powered by AgentScope. It combines LLM-driven fundamental analysis, professional valuation modeling (DCF / Residual Income / Relative / SOTP / WACC / Triangulation), and real-time multi-agent collaboration to generate structured investment ratings.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![React](https://img.shields.io/badge/react-19.2-61dafb.svg)](https://react.dev/)
+[![AgentScope](https://img.shields.io/badge/AgentScope-1.0.13+-green.svg)](https://github.com/modelscope/agentscope)
+
+**关键词 / Keywords / Tags:** `价值投资` `量化投资` `A股分析` `股票估值` `DCF估值` `剩余收益模型` `RIM` `相对估值` `SOTP分部加总` `WACC` `CAPM` `三角验证` `多智能体` `Multi-Agent` `LLM` `AgentScope` `基本面分析` `财务分析` `风险管理` `投资组合` `年报解析` `MD&A` `新闻舆情` `情绪分析` `FastAPI` `React` `TypeScript` `WebSocket` `value investing` `stock valuation` `DCF` `residual income` `relative valuation` `SOTP` `financial analysis` `investment rating` `A-share` `Chinese stock market`
 
 基于 [AgentScope](https://github.com/modelscope/agentscope) 框架的多智能体价值投资分析系统，采用前后端分离架构，通过多个专业AI智能体协作，对A股股票进行基本面分析、风险评估、估值建模和投资建议生成。
 
