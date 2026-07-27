@@ -1,0 +1,150 @@
+# ================== Python ==================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# ================== Virtual Environments ==================
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ================== IDE ==================
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# ================== Node.js ==================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+frontend/dist/
+frontend/build/
+
+# ================== Database ==================
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# ================== Secrets ==================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ================== OS ==================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ================== Logs ==================
+*.log
+logs/
+
+# ================== Project Specific ==================
+# Lock files
+.venv/.lock
+CACHEDIR.TAG
+
+# Data files (optional - uncomment if you don't want to track data)
+# data/
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# ================== Misc ==================
+.cache/
+
+# ================== Personal Notes (optional) ==================
+# Uncomment if you have private notes you don't want to share
+# notes.md
+# todo.md
+# private-*.md
+# scratch/
+# *.private.md
+
+# ================== Local Agent State ==================
+.zcode/
+
+# ================== Redis Snapshots ==================
+*.rdb
+dump.rdb
+
+# ================== Private Spec / Secrets ==================
+spec0207.md

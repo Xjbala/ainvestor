@@ -1,0 +1,84 @@
+.card {
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    transition: all var(--transition-standard);
+    border: 1px solid var(--color-border);
+    background-clip: padding-box;
+}
+
+/* Variant: Glass (Anadol Style) */
+.card-glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: var(--glass-border);
+}
+
+.card-glass:hover.card-interactive {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Variant: Solid (Vignelli Style) */
+.card-solid {
+    background: var(--color-base-800);
+}
+
+/* Variant: Outline */
+.card-outline {
+    background: transparent;
+    border-style: dashed;
+}
+
+/* Padding Scales */
+.card-p-none {
+    padding: 0;
+}
+
+.card-p-sm {
+    padding: var(--space-sm);
+}
+
+.card-p-md {
+    padding: var(--space-md);
+}
+
+.card-p-lg {
+    padding: var(--space-lg);
+}
+
+.card-header {
+    margin-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--space-sm);
+}
+
+.card-title {
+    margin-bottom: 0;
+    font-size: 1.125rem;
+    letter-spacing: -0.01em;
+}
+
+.card-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin-top: var(--space-xs);
+    margin-bottom: 0;
+}
+
+.card-body {
+    flex: 1;
+}
+
+.card-footer {
+    margin-top: var(--space-md);
+    padding-top: var(--space-sm);
+    border-top: 1px solid var(--color-border);
+}
+
+.card-interactive {
+    cursor: pointer;
+}

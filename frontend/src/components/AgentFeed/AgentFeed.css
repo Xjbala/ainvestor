@@ -1,0 +1,228 @@
+.agent-feed-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--color-base-900);
+    border-left: 1px solid var(--color-border);
+    position: relative;
+}
+
+/* Header V2 - Modernist Grid */
+.feed-header-v2 {
+    padding: var(--space-xl) var(--space-xl) var(--space-md);
+    border-bottom: 2px solid var(--color-base-white);
+    /* Vignelli bold line */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    background: var(--color-base-900);
+    z-index: 10;
+}
+
+.feed-title-v2 {
+    font-size: 2rem;
+    font-weight: 900;
+    margin: 0;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    color: var(--color-base-white);
+}
+
+.feed-status-v2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+    font-size: 0.75rem;
+    color: var(--color-accent-secondary);
+}
+
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--color-accent-secondary);
+    border-radius: 50%;
+    animation: pulse-flux 2s ease-in-out infinite;
+}
+
+@keyframes pulse-flux {
+
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1.5);
+        box-shadow: 0 0 10px var(--color-accent-secondary);
+    }
+}
+
+.feed-meta {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+/* Scroller & List */
+.feed-scroller {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--space-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+    scroll-behavior: smooth;
+}
+
+.feed-list-v2 {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+}
+
+/* Empty State - Anadol Vibes */
+.feed-empty-v2 {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-md);
+    color: var(--color-text-muted);
+    opacity: 0.5;
+}
+
+.empty-icon-v2 {
+    width: 48px;
+    height: 48px;
+    stroke-width: 1px;
+}
+
+/* Card Overrides */
+.feed-card-v2 {
+    animation: slide-in-fluid 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    position: relative;
+    overflow: hidden;
+}
+
+@keyframes slide-in-fluid {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.feed-card-v2::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--color-accent-secondary);
+    opacity: 0.3;
+}
+
+.feed-card-v2.phase-conference::after {
+    background: var(--color-accent-primary);
+}
+
+/* Agent Identity */
+.agent-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.agent-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--color-base-700);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-base-white);
+}
+
+.agent-avatar i {
+    width: 20px;
+    height: 20px;
+}
+
+.agent-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.agent-name-v2 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-base-white);
+    letter-spacing: 0.05em;
+}
+
+.agent-meta-v2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: 2px;
+}
+
+.timestamp-v2 {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+/* Message Content */
+.message-body {
+    font-size: 0.9375rem;
+    color: var(--color-text);
+    line-height: 1.8;
+}
+
+.message-body.is-truncated {
+    max-height: 300px;
+    overflow: hidden;
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+}
+
+.card-actions-v2 {
+    margin-top: var(--space-md);
+}
+
+/* Markdown Customization */
+.markdown-content p {
+    margin-bottom: var(--space-sm);
+}
+
+.markdown-content ul {
+    padding-left: var(--space-lg);
+    margin-bottom: var(--space-md);
+}
+
+.markdown-content li {
+    margin-bottom: 4px;
+}
+
+.markdown-content strong {
+    color: var(--color-accent-primary);
+    /* Insight emphasis */
+}
+
+/* Accessibility & Breakpoints */
+@media (max-width: 768px) {
+    .feed-header-v2 {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-md);
+    }
+}

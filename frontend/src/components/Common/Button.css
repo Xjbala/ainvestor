@@ -1,0 +1,117 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: 0 var(--space-md);
+    height: 2.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid transparent;
+}
+
+.btn-sm {
+    height: 2rem;
+    padding: 0 var(--space-sm);
+    font-size: 0.75rem;
+}
+
+.btn-lg {
+    height: 3.5rem;
+    padding: 0 var(--space-xl);
+    font-size: 1.125rem;
+    border-radius: var(--radius-lg);
+}
+
+/* Primary - Amber (Insight) */
+.btn-primary {
+    background: var(--color-accent-primary);
+    color: var(--color-base-900);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--color-base-white);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* Secondary - Electric Blue (Flux) */
+.btn-secondary {
+    background: var(--color-base-800);
+    border-color: var(--color-border);
+    color: var(--color-base-white);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    border-color: var(--color-accent-secondary);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Outline */
+.btn-outline {
+    background: transparent;
+    border-color: var(--color-border);
+    color: var(--color-text);
+}
+
+.btn-outline:hover:not(:disabled) {
+    border-color: var(--color-base-white);
+    color: var(--color-base-white);
+}
+
+/* Danger */
+.btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--color-error);
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: var(--color-error);
+    color: var(--color-base-white);
+}
+
+/* Ghost */
+.btn-ghost {
+    background: transparent;
+    color: var(--color-text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--color-base-white);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Spinner for Loading State */
+.btn-spinner {
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: btn-rotate 0.8s linear infinite;
+}
+
+@keyframes btn-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.is-loading .btn-content {
+    opacity: 0.7;
+}
