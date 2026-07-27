@@ -1,0 +1,51 @@
+name: Data / Valuation discussion
+description: 讨论数据源、科目映射、估值方法或行业画像
+title: "[Data/Valuation]: "
+labels: ["discussion", "data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        这类讨论对项目非常重要。  
+        AI Investor 的核心是：**先把基础数据做成可计算资产，再让 Agent 协作。**
+  - type: dropdown
+    id: topic
+    attributes:
+      label: 讨论主题
+      options:
+        - 数据源可靠性
+        - 财务科目映射
+        - 年报 / MD&A / 分部抽取
+        - 新闻舆情
+        - DCF / RIM / Relative / SOTP / WACC
+        - 行业画像与默认参数
+        - 数据缺失时的处理策略
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景
+      placeholder: 你在什么场景下遇到了这个问题？涉及哪些股票/行业？
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: 当前实现 / 当前结果
+      placeholder: 现在系统怎么做？输出哪里不合理？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 你的判断或建议
+      placeholder: 你认为更合理的数据源、映射规则、估值假设是什么？
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 依据 / 样例
+      description: 可提供公开报告片段、样例代码、计算结果对比；不要提交密钥

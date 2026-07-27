@@ -1,0 +1,81 @@
+name: Bug report
+description: 报告一个可复现的问题
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈！请尽量提供可复现信息，尤其是：
+        - 涉及的股票代码
+        - 是数据问题、估值问题，还是 Agent/前端问题
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题摘要
+      description: 用一两句话说明发生了什么
+      placeholder: 例如：对 600519 跑 DCF 时 WACC 计算报错 / 数据采集任务卡在 running
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请按顺序列出
+      placeholder: |
+        1. 启动后端和前端
+        2. 进入数据管理，采集 600519 财务报表
+        3. 打开专家模式运行 DCF
+        4. 看到报错...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 问题所属模块
+      multiple: true
+      options:
+        - 数据采集 / 爬虫
+        - 财务分析
+        - 估值模型
+        - Agent / Pipeline
+        - 前端 UI
+        - API / 数据库
+        - 文档
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: ticker
+    attributes:
+      label: 相关股票代码（如有）
+      placeholder: 600519
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境信息
+      placeholder: |
+        - OS:
+        - Python:
+        - Node.js:
+        - 浏览器:
+        - 模型提供方 / MODEL_NAME:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图 / 额外上下文
+      description: 可粘贴关键报错；请不要粘贴 API Key 或隐私信息

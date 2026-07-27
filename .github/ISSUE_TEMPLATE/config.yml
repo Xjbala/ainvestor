@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions / 讨论
+    url: https://github.com/Xjbala/ainvestor/issues
+    about: 如果你只是想交流设计思路，也可以先开 Issue 说明背景。
