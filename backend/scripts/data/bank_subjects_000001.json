@@ -1,0 +1,76 @@
+{
+  "source_sample": {
+    "source": "sina",
+    "stock_code": "000001",
+    "stock_name": "平安银行",
+    "report_date": "2026-03-31",
+    "note": "基于新浪财经 2026-03-31 三大表的独立主项目审核"
+  },
+  "subjects": [
+    {"code": "BSA023", "name": "现金及存放中央银行款项", "report_type": "BS", "category_code": "BS_CURRENT_ASSETS", "subject_category": "A", "sort_order": 1, "sina_name": "现金及存放中央银行款项", "description": "银行资产端合并口径，包含库存现金及存放中央银行款项"},
+    {"code": "BSA024", "name": "贵金属", "report_type": "BS", "category_code": "BS_CURRENT_ASSETS", "subject_category": "A", "sort_order": 2, "sina_name": "贵金属", "description": "银行持有的贵金属资产"},
+    {"code": "BSA025", "name": "存放同业款项", "report_type": "BS", "category_code": "BS_CURRENT_ASSETS", "subject_category": "A", "sort_order": 3, "sina_name": "存放同业款项", "description": "银行存放同业及其他金融机构款项"},
+    {"code": "BSA026", "name": "发放贷款及垫款净额", "report_type": "BS", "category_code": "BS_NON_CURRENT_ASSETS", "subject_category": "A", "sort_order": 100, "sina_name": "发放贷款及垫款净额", "description": "贷款及垫款扣除贷款损失准备后的账面净额"},
+    {"code": "BSA030", "name": "贷款损失准备", "report_type": "BS", "category_code": "BS_NON_CURRENT_ASSETS", "subject_category": "A", "sort_order": 101, "sina_name": "减:贷款损失准备", "description": "银行发放贷款及垫款的减值准备"},
+    {"code": "BSA027", "name": "现金", "report_type": "BS", "category_code": "BS_CURRENT_ASSETS", "subject_category": "A", "sort_order": 5, "sina_name": null, "description": "银行现金及存放中央银行款项下的库存现金明细，仅在父级上下文中采集"},
+    {"code": "BSA028", "name": "存放中央银行款", "report_type": "BS", "category_code": "BS_CURRENT_ASSETS", "subject_category": "A", "sort_order": 6, "sina_name": null, "description": "银行现金及存放中央银行款项下的存放中央银行明细"},
+    {"code": "BSA029", "name": "其他资产", "report_type": "BS", "category_code": "BS_NON_CURRENT_ASSETS", "subject_category": "A", "sort_order": 122, "sina_name": "其他资产", "description": "银行独立披露的其他资产合并口径"},
+
+    {"code": "BSL025", "name": "同业存入及拆入", "report_type": "BS", "category_code": "BS_CURRENT_LIABILITIES", "subject_category": "L", "sort_order": 1, "sina_name": "同业存入及拆入", "description": "银行同业存放款项和拆入资金的合并负债口径"},
+    {"code": "BSL026", "name": "客户存款", "report_type": "BS", "category_code": "BS_CURRENT_LIABILITIES", "subject_category": "L", "sort_order": 2, "sina_name": "客户存款(吸收存款)", "description": "银行吸收客户存款负债"},
+    {"code": "BSL027", "name": "同业存放款项", "report_type": "BS", "category_code": "BS_CURRENT_LIABILITIES", "subject_category": "L", "sort_order": 2, "sina_name": null, "description": "银行同业存入及拆入下的同业存放款项明细"},
+    {"code": "BSL028", "name": "其他负债", "report_type": "BS", "category_code": "BS_NON_CURRENT_LIABILITIES", "subject_category": "L", "sort_order": 120, "sina_name": "其他负债", "description": "银行独立披露的其他负债合并口径"},
+
+    {"code": "ISI006", "name": "净利息收入", "report_type": "IS", "category_code": "IS_REVENUE", "subject_category": "I", "sort_order": 1, "sina_name": "净利息收入", "description": "银行利息收入扣除利息支出后的净额"},
+    {"code": "ISI007", "name": "手续费及佣金净收入", "report_type": "IS", "category_code": "IS_REVENUE", "subject_category": "I", "sort_order": 2, "sina_name": "手续费及佣金净收入", "description": "银行手续费及佣金收入扣除支出后的净额"},
+    {"code": "ISI008", "name": "净交易收入", "report_type": "IS", "category_code": "IS_REVENUE", "subject_category": "I", "sort_order": 3, "sina_name": "净交易收入", "description": "银行交易业务净收入"},
+    {"code": "ISI009", "name": "其他业务收入", "report_type": "IS", "category_code": "IS_REVENUE", "subject_category": "I", "sort_order": 4, "sina_name": "其他业务收入", "description": "银行其他业务收入"},
+    {"code": "ISC011", "name": "营业支出", "report_type": "IS", "category_code": "IS_COSTS", "subject_category": "C", "sort_order": 1, "sina_name": "营业支出", "description": "银行利润表营业支出合并口径"},
+
+    {"code": "CFO021", "name": "拆入资金现金流入", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 1, "sina_name": "拆入资金现金流入", "description": "银行经营活动中拆入资金产生的现金流入"},
+    {"code": "CFO022", "name": "吸收的卖出回购项净额", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 2, "sina_name": "吸收的卖出回购项净额", "description": "银行卖出回购项现金流入净额"},
+    {"code": "CFO023", "name": "收回的买入返售项净额", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 3, "sina_name": "收回的买入返售项净额", "description": "银行买入返售项收回现金净额"},
+    {"code": "CFO024", "name": "拆出资金净现金流出", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 4, "sina_name": "拆出资金净现金流出", "description": "银行经营活动中拆出资金现金流出净额"},
+    {"code": "CFO025", "name": "偿还中央银行借款", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 5, "sina_name": "偿还中央银行借款", "description": "银行经营活动中偿还中央银行借款"},
+    {"code": "CFO026", "name": "为交易目的而持有的金融资产净增加额", "report_type": "CF", "category_code": "CF_OPERATING", "subject_category": "O", "sort_order": 6, "sina_name": "为交易目的而持有的金融资产净增加额", "description": "银行经营活动中交易性金融资产净增加额"},
+    {"code": "CFFN012", "name": "发行债券收到的现金", "report_type": "CF", "category_code": "CF_FINANCING", "subject_category": "FN", "sort_order": 1, "sina_name": "发行债券收到的现金", "description": "银行筹资活动中发行债券现金流入"},
+    {"code": "CFFN014", "name": "偿付利息所支付的现金", "report_type": "CF", "category_code": "CF_FINANCING", "subject_category": "FN", "sort_order": 3, "sina_name": "偿付利息所支付的现金", "description": "银行筹资活动中偿付利息现金流出"}
+  ],
+  "aliases": [
+    {"report_type": "BS", "subject_code": "BSA005", "source_name": "衍生金融工具资产", "note": "银行报表展示变体，复用衍生金融资产标准科目"},
+    {"report_type": "BS", "subject_code": "BSA118", "source_name": "递延税款借项", "note": "银行报表展示变体，复用递延所得税资产标准科目"},
+    {"report_type": "BS", "subject_code": "BSA027", "source_name": "其中:现金", "context_name": "现金及存放中央银行款项", "note": "银行合并现金科目下明细，不映射到货币资金"},
+    {"report_type": "BS", "subject_code": "BSA028", "source_name": "存放中央银行款", "context_name": "现金及存放中央银行款项", "note": "银行合并现金科目下明细，不映射到货币资金"},
+    {"report_type": "BS", "subject_code": "BSA029", "source_name": "其他资产合计", "note": "银行报表展示变体"},
+    {"report_type": "BS", "subject_code": "BSL027", "source_name": "其中:同业存放款项", "context_name": "同业存入及拆入", "note": "银行合并同业负债下明细"},
+    {"report_type": "BS", "subject_code": "BSL003", "source_name": "拆入资金", "context_name": "同业存入及拆入", "note": "银行合并同业负债下明细，复用拆入资金标准科目"},
+    {"report_type": "BS", "subject_code": "BSL026", "source_name": "客户存款", "note": "银行客户存款展示变体"},
+    {"report_type": "BS", "subject_code": "BSL005", "source_name": "衍生金融工具负债", "note": "银行报表展示变体，复用衍生金融负债标准科目"},
+    {"report_type": "BS", "subject_code": "BSE001", "source_name": "股本", "note": "银行股东权益科目展示名称，复用实收资本（或股本）标准科目"},
+    {"report_type": "BS", "subject_code": "BSE010", "source_name": "归属于母公司股东的权益", "note": "银行归母权益展示名称，复用归属于母公司所有者权益合计标准科目"},
+    {"report_type": "BS", "subject_code": "BSE012", "source_name": "股东权益", "note": "银行总股东权益展示名称，复用所有者权益（或股东权益）合计标准科目"},
+    {"report_type": "IS", "subject_code": "ISI002", "source_name": "利息收入", "context_name": "净利息收入", "note": "银行净利息收入下明细，复用银行利息收入标准科目"},
+    {"report_type": "IS", "subject_code": "ISC002", "source_name": "利息支出", "context_name": "净利息收入", "note": "银行净利息收入下明细"},
+    {"report_type": "IS", "subject_code": "ISI004", "source_name": "手续费及佣金收入", "context_name": "手续费及佣金净收入", "note": "银行手续费净收入下明细，复用手续费及佣金收入标准科目"},
+    {"report_type": "IS", "subject_code": "ISC003", "source_name": "手续费及佣金支出", "context_name": "手续费及佣金净收入", "note": "银行手续费净收入下明细"},
+    {"report_type": "IS", "subject_code": "ISF013", "source_name": "公允价值变动收益/(损失)", "note": "新浪银行报表展示变体"},
+    {"report_type": "IS", "subject_code": "ISI009", "source_name": "其他业务利润", "note": "历史新浪银行报表展示变体"},
+    {"report_type": "IS", "subject_code": "ISF020", "source_name": "减:所得税", "note": "银行报表填列前缀变体"},
+    {"report_type": "IS", "subject_code": "ISF026", "source_name": "归属于母公司的净利润", "note": "银行报表展示变体"},
+    {"report_type": "CF", "subject_code": "CFFN006", "source_name": "偿还债务所支付的现金", "note": "银行报表展示变体，复用偿还债务支付的现金标准科目"},
+    {"report_type": "CF", "subject_code": "CFIV003", "source_name": "处置固定资产、无形资产及其他资产而收到的现金", "note": "银行报表展示变体"},
+    {"report_type": "CF", "subject_code": "CFFN001", "source_name": "吸收投资所收到的现金", "note": "银行报表展示变体"}
+  ],
+  "rejected": [
+    {"report_type": "BS", "source_name": "固定资产净额", "reason": "现有固定资产标准科目口径未单独区分净额，不能自动写入固定资产"},
+    {"report_type": "BS", "source_name": "固定资产合计", "reason": "现有固定资产标准科目口径未单独区分合计，不能自动写入固定资产"},
+    {"report_type": "BS", "source_name": "其中：永续债", "reason": "其他权益工具下展示明细，不能覆盖其他权益工具汇总科目"},
+    {"report_type": "IS", "source_name": "以摊余成本计量的金融资产终止确认产生的收益", "reason": "投资收益下展示明细，不能覆盖投资收益汇总科目"},
+    {"report_type": "IS", "source_name": "（一）以后不能重分类进损益的其他综合收益", "reason": "其他综合收益下层级标题，不能作为独立标准科目入库"},
+    {"report_type": "IS", "source_name": "（二）以后将重分类进损益的其他综合收益", "reason": "其他综合收益下层级标题，不能作为独立标准科目入库"},
+    {"report_type": "IS", "source_name": "其他债权投资信用减值准备", "reason": "其他综合收益下展示明细，不能覆盖其他综合收益汇总科目"},
+    {"report_type": "IS", "source_name": "其他债权投资公允价值变动", "reason": "其他综合收益下展示明细，不能覆盖其他综合收益汇总科目"},
+    {"report_type": "IS", "source_name": "其他权益工具投资公允价值变动", "reason": "其他综合收益下展示明细，不能覆盖其他综合收益汇总科目"},
+    {"report_type": "IS", "source_name": "外币财务报表折算差额", "reason": "其他综合收益下展示明细，不能覆盖其他综合收益汇总科目"}
+  ]
+}

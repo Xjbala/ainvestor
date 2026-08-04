@@ -115,8 +115,25 @@ async def init_database() -> None:
     from . import orm_models  # noqa: F401
     from . import financial_models  # noqa: F401
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        # 历史库可能存在不兼容约束（如 JSON 唯一索引），全量 create_all 会失败。
+        # 回退为仅确保新增关键表存在，避免阻断服务启动。
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Full create_all failed (%s); ensuring critical new tables only", e
+        )
+        from .financial_models import FinancialCoverageSnapshot
+
+        async with engine.begin() as conn:
+            await conn.run_sync(
+                lambda sync_conn: FinancialCoverageSnapshot.__table__.create(
+                    sync_conn, checkfirst=True
+                )
+            )
 
 
 async def close_database() -> None:

@@ -68,6 +68,7 @@ export function DecisionFooter({
     const formatTarget = () => {
         if (isAnalyzing && (targetPrice === '计算中...' || !targetPrice)) return '计算中...';
         if (!targetPrice || targetPrice === '—' || targetPrice === '计算中...') return '—';
+        if (targetPrice === '无法评估') return targetPrice;
         if (typeof targetPrice === 'string' && (targetPrice.includes('¥') || targetPrice.includes('-'))) {
             return targetPrice;
         }

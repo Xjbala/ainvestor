@@ -39,7 +39,28 @@ export default {
                     '100%': { backgroundPosition: '40px 0' },
                 },
             },
+            keyframes: {
+                dataFlow: {
+                    '0%': { backgroundPosition: '0% 50%' },
+                    '50%': { backgroundPosition: '100% 50%' },
+                    '100%': { backgroundPosition: '0% 50%' },
+                },
+                'pulse-glow': {
+                    '0%, 100%': { opacity: '0.4' },
+                    '50%': { opacity: '1' },
+                },
+                breathe: {
+                    '0%, 100%': { boxShadow: '0 0 0 0 rgba(0, 217, 255, 0.1)' },
+                    '50%': { boxShadow: '0 0 20px 5px rgba(0, 217, 255, 0.2)' },
+                },
+                flow: {
+                    '0%': { backgroundPosition: '0 0' },
+                    '100%': { backgroundPosition: '40px 0' },
+                },
+            },
         },
     },
-    plugins: [],
+    plugins: [
+        require('tailwindcss-typography'),
+    ],
 }

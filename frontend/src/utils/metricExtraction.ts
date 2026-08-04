@@ -45,16 +45,26 @@ function normalizeRating(raw: string): string | null {
     return null;
 }
 
-/**
- * 从文本中提取第一个 JSON recommendations 对象
- */
-export function extractRecommendationJson(content: string): {
+export const UNAVAILABLE_TARGET_PRICE = '无法评估';
+
+export function isUnavailableTargetPrice(value: unknown): boolean {
+    return typeof value === 'string' && value.trim() === UNAVAILABLE_TARGET_PRICE;
+}
+
+export interface InvestmentRecommendation {
+    ticker?: string;
     rating?: string;
     target_price?: number | string | null;
     target_price_range?: string | null;
     holding_period?: string | null;
     core_logic?: string;
-} | null {
+    risk_warnings?: string;
+}
+
+/**
+ * 从文本中提取完整的 JSON recommendations 数组。
+ */
+export function extractInvestmentRecommendations(content: string): InvestmentRecommendation[] | null {
     if (!content) return null;
 
     const candidates: string[] = [];
@@ -71,16 +81,30 @@ export function extractRecommendationJson(content: string): {
     for (const raw of candidates) {
         try {
             const data = JSON.parse(raw);
-            const recs = data?.recommendations;
-            if (Array.isArray(recs) && recs.length > 0 && typeof recs[0] === 'object') {
-                return recs[0];
+            const recommendations = data?.recommendations;
+            if (
+                Array.isArray(recommendations)
+                && recommendations.length > 0
+                && recommendations.every((item) => item && typeof item === 'object' && !Array.isArray(item))
+            ) {
+                return recommendations as InvestmentRecommendation[];
             }
         } catch {
-            // try next
+            // Try the next candidate.
         }
     }
 
-    // 宽松提取 rating / target_price 字段
+    return null;
+}
+
+/**
+ * 从文本中提取第一个 JSON recommendations 对象
+ */
+export function extractRecommendationJson(content: string): InvestmentRecommendation | null {
+    const recommendations = extractInvestmentRecommendations(content);
+    if (recommendations) return recommendations[0];
+
+    // 宽松提取 rating / target_price 字段，保持对非标准模型输出的兼容。
     const ratingM = content.match(/"rating"\s*:\s*"([^"]+)"/);
     const tpM = content.match(/"target_price"\s*:\s*(null|"[^"]*"|-?[\d.]+)/);
     const trM = content.match(/"target_price_range"\s*:\s*(null|"[^"]*")/);
@@ -172,6 +196,7 @@ export function extractTargetPrice(content: string): string | null {
         const range = fromJson.target_price_range;
         if (range != null && range !== '' && String(range) !== 'null') {
             const s = String(range).trim();
+            if (isUnavailableTargetPrice(s)) return s;
             if (s && !/无有效|无|不适用|null|none/i.test(s)) {
                 // 1.0-1.5 / ¥1.0 - ¥1.5
                 const rm = s.match(/¥?\s*([\d.]+)\s*[-–~到至]\s*¥?\s*([\d.]+)/);
@@ -221,6 +246,11 @@ export function extractTargetPrice(content: string): string | null {
                 return `¥${low.toFixed(2)} - ¥${high.toFixed(2)}`;
             }
         }
+    }
+
+    // 决策摘要块中的“无法评估”表示 PM 无法建立目标价。
+    if (/目标价位[：:]\s*无法评估/.test(content)) {
+        return UNAVAILABLE_TARGET_PRICE;
     }
 
     // 决策摘要块中的 "—" 表示无目标价

@@ -15,6 +15,7 @@ import {
     extractRecommendation,
     extractSafetyMargin,
     extractRiskLevel,
+    isUnavailableTargetPrice,
 } from '../utils/metricExtraction';
 import { stripThinkingContent } from '../utils/reportUtils';
 
@@ -435,8 +436,11 @@ export function useAnalysisStore() {
         if (sourceContent) {
             valuationGap = extractValuationGap(sourceContent);
         }
-        // 回退：从估值分析师文本取上涨空间
-        if (valuationGap == null && valuationContent) {
+        const finalTargetPrice = sourceContent ? extractTargetPrice(sourceContent) : null;
+        const hasUnavailableTargetPrice = isUnavailableTargetPrice(finalTargetPrice);
+
+        // PM 明确无法评估时，不以估值模型的上涨空间替代最终建议。
+        if (valuationGap == null && !hasUnavailableTargetPrice && valuationContent) {
             valuationGap = extractValuationGap(valuationContent);
         }
 
@@ -457,11 +461,11 @@ export function useAnalysisStore() {
             : null;
 
         // 目标价优先：PM/报告 → 综合公允价 → 估值分析师
-        let targetPrice = sourceContent ? extractTargetPrice(sourceContent) : null;
-        if ((!targetPrice || targetPrice === '—') && methodBreakdown?.blendedPrice != null && methodBreakdown.blendedPrice > 0) {
+        let targetPrice = finalTargetPrice;
+        if (!hasUnavailableTargetPrice && (!targetPrice || targetPrice === '—') && methodBreakdown?.blendedPrice != null && methodBreakdown.blendedPrice > 0) {
             targetPrice = `¥${methodBreakdown.blendedPrice.toFixed(2)}`;
         }
-        if ((!targetPrice || targetPrice === '—') && valuationContent) {
+        if (!hasUnavailableTargetPrice && (!targetPrice || targetPrice === '—') && valuationContent) {
             targetPrice = extractTargetPrice(valuationContent) || targetPrice;
         }
 

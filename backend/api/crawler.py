@@ -370,6 +370,38 @@ class BatchFinancialRequest(BaseModel):
     task_name: str = Field(default="全量财务数据批量采集", description="任务名称")
     data_source_code: str = Field(default="sina", description="数据源代码")
     years: Optional[List[int]] = Field(None, description="采集年份列表，如 [2021,2022,2023,2024,2025]。默认最近5年")
+    target_companies: Optional[List[str]] = Field(
+        None,
+        description="目标公司列表；为空表示全部活跃公司",
+    )
+
+
+class FinancialRepairRequest(BaseModel):
+    """财务数据缺口补采请求"""
+    task_name: str = Field(default="财务数据缺口补采", description="任务名称")
+    data_source_code: str = Field(default="sina", description="数据源代码")
+    years: Optional[List[int]] = Field(
+        None,
+        description="扫描/补采年份；默认最近5个完整财年",
+    )
+    target_companies: Optional[List[str]] = Field(
+        None,
+        description="限定公司；为空则扫描全部活跃公司中的缺口",
+    )
+    report_types: Optional[List[str]] = Field(
+        default=["BS", "IS", "CF"],
+        description="参与缺口扫描的报表类型",
+    )
+    max_companies: int = Field(
+        default=500,
+        ge=1,
+        le=5000,
+        description="单次补采最多纳入公司数，防止一次任务过大",
+    )
+    auto_detect: bool = Field(
+        default=True,
+        description="是否先扫描缺口再补采；false 时直接对 target_companies 全量重采",
+    )
 
 
 class QualitativeCollectionRequest(BaseModel):
@@ -405,6 +437,7 @@ async def create_batch_financial_task(
         task_name: 任务名称
         data_source_code: 数据源代码（默认 sina）
         years: 采集年份列表，如 [2021,2022,2023,2024,2025]，默认最近5年
+        target_companies: 可选，限定公司范围
     """
     data_source = await _get_or_create_data_source(session, request.data_source_code)
 
@@ -414,6 +447,7 @@ async def create_batch_financial_task(
         task_name=request.task_name,
         data_source_id=data_source.id,
         data_type=CrawlerDataType.BATCH_FINANCIAL_DATA,
+        target_companies=request.target_companies,
         extra_params={"years": [str(y) for y in (request.years or [])]},
         created_by=current_user.id if current_user else None,
     )
@@ -423,11 +457,115 @@ async def create_batch_financial_task(
     await session.refresh(task)
 
     username = current_user.username if current_user else "anonymous"
-    logger.info(f"Created batch financial task: {task.task_name} by {username}, years={request.years}")
+    logger.info(
+        f"Created batch financial task: {task.task_name} by {username}, "
+        f"years={request.years}, targets={len(request.target_companies or [])}"
+    )
 
     # 触发后台执行
     background_tasks.add_task(crawler_engine.execute_task, task.id)
 
+    return _task_to_response(task)
+
+
+@router.post("/tasks/repair-financial", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
+async def create_financial_repair_task(
+    request: FinancialRepairRequest,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """
+    根据核心科目缺口创建财务数据补采任务。
+
+    默认先扫描活跃公司的 BS/IS/CF 覆盖率，仅对缺口公司发起 batch_financial_data。
+    断点续采逻辑会再次过滤已齐全单元，避免无意义重抓。
+    """
+    from ..api.companies import get_financial_gaps
+
+    data_source = await _get_or_create_data_source(session, request.data_source_code)
+
+    years = request.years
+    if not years:
+        end_year = date.today().year - 1
+        years = list(range(end_year - 4, end_year + 1))
+
+    rt_list = [rt.upper() for rt in (request.report_types or ["BS", "IS", "CF"])]
+    rt_list = [rt for rt in rt_list if rt in ("BS", "IS", "CF")] or ["BS", "IS", "CF"]
+
+    target_codes: List[str] = []
+    gap_meta: dict = {}
+
+    if request.auto_detect:
+        stock_codes = None
+        if request.target_companies:
+            stock_codes = ",".join(request.target_companies)
+        gaps_resp = await get_financial_gaps(
+            years=",".join(str(y) for y in years),
+            report_types=",".join(rt_list),
+            status_filter="active",
+            search=None,
+            stock_codes=stock_codes,
+            limit=5000,
+            session=session,
+        )
+        targets = gaps_resp.get("repair_targets") or []
+        target_codes = [t["stock_code"] for t in targets[: request.max_companies]]
+        gap_meta = {
+            "gap_count": gaps_resp.get("gap_count", 0),
+            "gap_company_count": len(targets),
+            "selected_company_count": len(target_codes),
+            "truncated": True,
+            "sample_targets": targets[:20],
+        }
+        if not target_codes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="扫描完成：目标范围内无核心科目缺口，无需补采",
+            )
+        task_name = request.task_name
+        if task_name == "财务数据缺口补采":
+            task_name = f"财务缺口补采({len(target_codes)}家/{min(years)}-{max(years)})"
+    else:
+        target_codes = list(dict.fromkeys(request.target_companies or []))
+        if not target_codes:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="auto_detect=false 时必须提供 target_companies",
+            )
+        target_codes = target_codes[: request.max_companies]
+        task_name = request.task_name
+        gap_meta = {
+            "gap_count": None,
+            "gap_company_count": len(target_codes),
+            "selected_company_count": len(target_codes),
+            "truncated": False,
+        }
+
+    task = CrawlerTask(
+        id=str(uuid4()),
+        task_name=task_name,
+        data_source_id=data_source.id,
+        data_type=CrawlerDataType.BATCH_FINANCIAL_DATA,
+        target_companies=target_codes,
+        extra_params={
+            "years": [str(y) for y in years],
+            "report_types": rt_list,
+            "repair": True,
+            **gap_meta,
+        },
+        created_by=current_user.id if current_user else None,
+    )
+    session.add(task)
+    await session.commit()
+    await session.refresh(task)
+
+    username = current_user.username if current_user else "anonymous"
+    logger.info(
+        f"Created financial repair task: {task.task_name} by {username}, "
+        f"companies={len(target_codes)}, years={years}"
+    )
+    background_tasks.add_task(crawler_engine.execute_task, task.id)
     return _task_to_response(task)
 
 

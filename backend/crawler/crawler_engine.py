@@ -11,6 +11,8 @@ import logging
 from datetime import datetime, date
 from typing import Dict, Any, List, Optional
 
+from collections import defaultdict
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,9 +21,15 @@ from .sina_crawler import SinaCrawlerService
 from .exchange_crawler import ExchangeCrawler
 from .qualitative_service import QualitativeCrawlerService
 from .news_service import NewsCrawlerService
+from ..analysis.financial_validation import (
+    is_year_complete_for_resume,
+    required_core_codes,
+    validation_profile_for_industry,
+)
 from ..persistence.db import async_session_factory
 from ..persistence.financial_models import (
-    CrawlerTask, CrawlerTaskStatus, CrawlerDataType, DataSource, Company, FinancialData, ReportType, CompanyStatus
+    CrawlerTask, CrawlerTaskStatus, CrawlerDataType, DataSource, Company,
+    FinancialData, ReportType, CompanyStatus, Industry,
 )
 
 logger = logging.getLogger(__name__)
@@ -233,9 +241,27 @@ class CrawlerEngine:
                         # 过滤出目标年份的数据
                         filtered = [d for d in data_list if d.get("report_date", "")[:4] in years]
                         if filtered:
-                            await service.save_to_db(filtered)
-                            success_count += 1
+                            save_summary = await service.save_to_db(
+                                filtered, crawl_task_id=task.id
+                            )
+                            safe_rows = (
+                                save_summary["inserted_rows"]
+                                + save_summary["updated_rows"]
+                            )
                             collected += 1
+                            if safe_rows:
+                                success_count += 1
+                            else:
+                                error_count += 1
+                                error_samples.append(
+                                    f"{stock_code} {report_name}: 无安全科目匹配"
+                                )
+                            quality_detail = (
+                                f"安全写入={safe_rows} 未匹配={save_summary['unmatched_rows']} "
+                                f"歧义={save_summary['ambiguous_rows']} "
+                                f"拒绝={save_summary['rejected_rows']} "
+                                f"冲突={save_summary['conflict_rows']}"
+                            )
                             if collected % 20 == 0 or collected == total_jobs:
                                 async with log_lock:
                                     task.success_count = success_count
@@ -245,10 +271,18 @@ class CrawlerEngine:
                                     await append_task_log(
                                         session,
                                         task,
-                                        f"批量进度 {collected}/{total_jobs} | 最近成功: {stock_code} {report_name} "
-                                        f"({len(filtered)} 条科目)",
+                                        f"批量进度 {collected}/{total_jobs} | 最近{'成功' if safe_rows else '失败'}: "
+                                        f"{stock_code} {report_name} | {quality_detail}",
+                                        level="INFO" if safe_rows else "WARNING",
                                     )
-                                    logger.info(f"Batch progress: {collected}/{total_jobs} data points collected")
+                                    logger.info(
+                                        "Batch progress: %s/%s %s %s | %s",
+                                        collected,
+                                        total_jobs,
+                                        stock_code,
+                                        report_name,
+                                        quality_detail,
+                                    )
                         else:
                             # 有返回但目标年份无数据
                             empty_count += 1
@@ -321,6 +355,61 @@ class CrawlerEngine:
         await session.commit()
         logger.info(f"Batch financial collection completed: success={success_count}, errors={error_count}, total={total_jobs}")
 
+        # 补采/批量财务任务结束后刷新覆盖率快照，供看板直接读取
+        await self._refresh_coverage_snapshot_after_batch(task, year_ints)
+
+    async def _refresh_coverage_snapshot_after_batch(
+        self,
+        task: CrawlerTask,
+        years: List[int],
+    ) -> None:
+        """批量财务采集成功后异步刷新覆盖率快照。"""
+        extra = task.extra_params if isinstance(task.extra_params, dict) else {}
+        # 仅全量或明确 repair 任务刷新；避免无关局部实验污染主快照可再扩展
+        should_refresh = bool(extra.get("repair")) or not task.target_companies
+        if not should_refresh:
+            return
+        if task.status not in (CrawlerTaskStatus.SUCCESS,):
+            # 有部分成功也刷新，便于看到最新缺口
+            if (task.success_count or 0) <= 0:
+                return
+
+        try:
+            from ..analysis.coverage_service import refresh_coverage_after_repair
+
+            report_types = extra.get("report_types") or ["BS", "IS", "CF"]
+            result = await refresh_coverage_after_repair(
+                years=years,
+                report_types=report_types,
+                status_filter="active",
+                trigger_task_id=task.id,
+            )
+            if result:
+                logger.info(
+                    "Coverage snapshot refreshed after task %s: snapshot_id=%s coverage=%s gaps=%s",
+                    task.id,
+                    result.get("snapshot_id"),
+                    result.get("coverage_rate"),
+                    result.get("gap_company_count"),
+                )
+                # 将刷新结果写回任务日志（新开 session 避免上面 session 状态不确定）
+                async with async_session_factory() as log_session:
+                    stmt = select(CrawlerTask).where(CrawlerTask.id == task.id)
+                    t = (await log_session.execute(stmt)).scalar_one_or_none()
+                    if t:
+                        await append_task_log(
+                            log_session,
+                            t,
+                            (
+                                f"覆盖率快照已刷新 | snapshot_id={result.get('snapshot_id')} "
+                                f"coverage={result.get('coverage_rate')} "
+                                f"gap_companies={result.get('gap_company_count')} "
+                                f"耗时={result.get('scan_duration_ms')}ms"
+                            ),
+                        )
+        except Exception as e:
+            logger.warning(f"Failed to refresh coverage snapshot after task {task.id}: {e}")
+
     async def _find_missing_data(
         self,
         session: AsyncSession,
@@ -329,32 +418,86 @@ class CrawlerEngine:
         years: List[int],
     ) -> Dict[str, List[str]]:
         """
-        找出缺失的财务数据，支持断点续采
+        找出缺失的财务数据，支持断点续采。
+
+        判定标准升级为：目标年份内，每个年份都必须具备该报表的
+        全部必填核心科目；仅“有任意一条记录”不再视为完整。
 
         Returns:
             {report_type_str: [stock_code1, stock_code2, ...]}
         """
         missing: Dict[str, List[str]] = {rt_str: [] for rt_str, _, _ in report_configs}
+        if not stock_codes or not years:
+            return missing
+
+        target_years = set(years)
+        year_min = min(years)
+        year_max = max(years)
+
+        profile_by_company: Dict[str, str] = {}
+        profile_rows = (
+            await session.execute(
+                select(Company.stock_code, Company.stock_name, Industry.code, Industry.name)
+                .outerjoin(Industry, Company.industry_id == Industry.id)
+                .where(Company.stock_code.in_(stock_codes))
+            )
+        ).all()
+        for company_code, stock_name, industry_code, industry_name in profile_rows:
+            profile_by_company[company_code] = validation_profile_for_industry(
+                industry_code, industry_name, stock_name
+            )
 
         for rt_str, rt_enum, _ in report_configs:
+            required_by_profile = {
+                profile: required_core_codes(rt_str, profile)
+                for profile in set(profile_by_company.values()) | {"default"}
+            }
+            # 批量取出该报表在目标年份范围内的科目，避免 N 次按公司查询
+            stmt = select(
+                FinancialData.company_code,
+                FinancialData.report_date,
+                FinancialData.subject_code,
+            ).where(
+                FinancialData.company_code.in_(stock_codes),
+                FinancialData.report_type == rt_enum,
+                FinancialData.report_date >= date(year_min, 1, 1),
+                FinancialData.report_date <= date(year_max, 12, 31),
+            )
+            rows = (await session.execute(stmt)).all()
+
+            # company -> year -> {annual: set, any: set}
+            # 优先用年报(12-31)判断完整度；若无年报再回退到该年任意期次
+            present_by_company_year: Dict[str, Dict[int, Dict[str, set]]] = defaultdict(
+                lambda: defaultdict(lambda: {"annual": set(), "any": set()})
+            )
+            for company_code, report_date, subject_code in rows:
+                if not report_date or not subject_code:
+                    continue
+                y = report_date.year
+                if y not in target_years:
+                    continue
+                bucket = present_by_company_year[company_code][y]
+                bucket["any"].add(subject_code)
+                if report_date.month == 12:
+                    bucket["annual"].add(subject_code)
+
             for code in stock_codes:
-                # 检查该公司该报表在指定年份范围内是否有数据
-                stmt = select(FinancialData).where(
-                    FinancialData.company_code == code,
-                    FinancialData.report_type == rt_enum,
-                )
-                result = await session.execute(stmt)
-                existing = result.scalars().all()
-
-                # 收集该公司该报表已有的年份集合
-                existing_years = set()
-                for fd in existing:
-                    if fd.report_date:
-                        existing_years.add(fd.report_date.year)
-
-                # 检查目标年份是否有缺失
-                target_years = set(years)
-                if not target_years.issubset(existing_years):
+                year_map = present_by_company_year.get(code, {})
+                incomplete = False
+                for y in target_years:
+                    bucket = year_map.get(y) or {"annual": set(), "any": set()}
+                    codes = bucket["annual"] or bucket["any"]
+                    profile = profile_by_company.get(code, "default")
+                    if not is_year_complete_for_resume(codes, rt_str, profile):
+                        incomplete = True
+                        break
+                # 无核心科目定义时，回退：目标年都必须至少有一条
+                if not required_by_profile.get(profile_by_company.get(code, "default")):
+                    incomplete = any(
+                        y not in year_map or not (year_map[y]["annual"] or year_map[y]["any"])
+                        for y in target_years
+                    )
+                if incomplete:
                     missing[rt_str].append(code)
 
         return missing
@@ -413,16 +556,41 @@ class CrawlerEngine:
                 )
                 data_list = await service.crawl_financial_report(stock_code, report_type_str)
                 if data_list:
-                    if hasattr(service, 'save_to_db'):
-                        await service.save_to_db(data_list)
-                    success_count += 1
-                    await service.update_task_progress(
-                        task,
-                        success_count,
-                        error_count,
-                        total,
-                        detail=f"{stock_code} 成功，写入 {len(data_list)} 条科目",
+                    save_summary = None
+                    if hasattr(service, "save_to_db"):
+                        save_summary = await service.save_to_db(
+                            data_list, crawl_task_id=task.id
+                        )
+                    safe_rows = (
+                        (save_summary or {}).get("inserted_rows", len(data_list))
+                        + (save_summary or {}).get("updated_rows", 0)
                     )
+                    if safe_rows:
+                        success_count += 1
+                        detail = (
+                            f"{stock_code} 安全写入={safe_rows} "
+                            f"未匹配={(save_summary or {}).get('unmatched_rows', 0)} "
+                            f"歧义={(save_summary or {}).get('ambiguous_rows', 0)} "
+                            f"拒绝={(save_summary or {}).get('rejected_rows', 0)} "
+                            f"冲突={(save_summary or {}).get('conflict_rows', 0)}"
+                        )
+                        await service.update_task_progress(
+                            task,
+                            success_count,
+                            error_count,
+                            total,
+                            detail=detail,
+                        )
+                    else:
+                        error_count += 1
+                        await service.update_task_progress(
+                            task,
+                            success_count,
+                            error_count,
+                            total,
+                            error_log=f"{stock_code}: 未匹配到可安全落库的标准科目",
+                            detail=f"{stock_code} 无安全科目匹配",
+                        )
                 else:
                     error_count += 1
                     await service.update_task_progress(

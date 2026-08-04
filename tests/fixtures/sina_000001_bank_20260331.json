@@ -1,0 +1,29 @@
+{
+  "stock_code": "000001",
+  "report_date": "2026-03-31",
+  "rows": [
+    {"report_type": "BS", "raw_subject_name": "现金及存放中央银行款项", "source_context_name": "现金及存放中央银行款项", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "其中:现金", "source_context_name": "现金及存放中央银行款项", "display_type": 3},
+    {"report_type": "BS", "raw_subject_name": "存放中央银行款", "source_context_name": "现金及存放中央银行款项", "display_type": 3},
+    {"report_type": "BS", "raw_subject_name": "存放同业款项", "source_context_name": "存放同业款项", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "发放贷款及垫款净额", "source_context_name": "发放贷款及垫款净额", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "减:贷款损失准备", "source_context_name": "减:贷款损失准备", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "同业存入及拆入", "source_context_name": "同业存入及拆入", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "其中:同业存放款项", "source_context_name": "同业存入及拆入", "display_type": 3},
+    {"report_type": "BS", "raw_subject_name": "客户存款(吸收存款)", "source_context_name": "客户存款(吸收存款)", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "股本", "source_context_name": "股本", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "股东权益", "source_context_name": "股东权益", "display_type": 6},
+    {"report_type": "IS", "raw_subject_name": "净利息收入", "source_context_name": "净利息收入", "display_type": 2},
+    {"report_type": "IS", "raw_subject_name": "利息收入", "source_context_name": "净利息收入", "display_type": 3},
+    {"report_type": "IS", "raw_subject_name": "手续费及佣金净收入", "source_context_name": "手续费及佣金净收入", "display_type": 2},
+    {"report_type": "IS", "raw_subject_name": "手续费及佣金收入", "source_context_name": "手续费及佣金净收入", "display_type": 3},
+    {"report_type": "IS", "raw_subject_name": "营业支出", "source_context_name": "营业支出", "display_type": 1},
+    {"report_type": "CF", "raw_subject_name": "拆入资金现金流入", "source_context_name": "拆入资金现金流入", "display_type": 2},
+    {"report_type": "CF", "raw_subject_name": "吸收的卖出回购项净额", "source_context_name": "吸收的卖出回购项净额", "display_type": 2},
+    {"report_type": "CF", "raw_subject_name": "为交易目的而持有的金融资产净增加额", "source_context_name": "为交易目的而持有的金融资产净增加额", "display_type": 2},
+    {"report_type": "CF", "raw_subject_name": "发行债券收到的现金", "source_context_name": "发行债券收到的现金", "display_type": 2},
+    {"report_type": "CF", "raw_subject_name": "偿还债务所支付的现金", "source_context_name": "偿还债务所支付的现金", "display_type": 2},
+    {"report_type": "CF", "raw_subject_name": "偿付利息所支付的现金", "source_context_name": "偿付利息所支付的现金", "display_type": 2},
+    {"report_type": "BS", "raw_subject_name": "固定资产净额", "source_context_name": "固定资产净额", "display_type": 2}
+  ]
+}

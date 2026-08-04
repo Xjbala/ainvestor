@@ -4,6 +4,62 @@
 @tailwind components;
 @tailwind utilities;
 
+@source "./styles.css";
+
+@layer base {
+  .prose {
+    max-width: 100%;
+  }
+  
+  .prose h1 {
+    @apply text-2xl font-bold text-gray-900 mb-4;
+  }
+  
+  .prose h2 {
+    @apply text-xl font-semibold text-gray-800 mt-6 mb-3;
+  }
+  
+  .prose h3 {
+    @apply text-lg font-semibold text-gray-700 mt-5 mb-2;
+  }
+  
+  .prose p {
+    @apply text-gray-600 mb-3 leading-relaxed;
+  }
+  
+  .prose ul {
+    @apply space-y-1.5 mb-4;
+  }
+  
+  .prose li {
+    @apply text-gray-600 pl-2;
+  }
+  
+  .prose table {
+    @apply w-full border-collapse border border-gray-200 my-4;
+  }
+  
+  .prose th {
+    @apply bg-gray-50 border border-gray-200 px-4 py-2 text-left text-sm font-medium text-gray-700;
+  }
+  
+  .prose td {
+    @apply border border-gray-200 px-4 py-2 text-sm text-gray-600;
+  }
+  
+  .prose pre {
+    @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono my-4;
+  }
+  
+  .prose code {
+    @apply bg-gray-100 text-gray-900 px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+  
+  .prose a {
+    @apply text-blue-600 hover:text-blue-700 underline;
+  }
+}
+
 @layer base {
   body {
     @apply font-sans antialiased text-gray-900 bg-gray-50;

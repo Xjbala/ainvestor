@@ -196,6 +196,9 @@ class Company(Base):
     exchange: Mapped["Exchange"] = relationship("Exchange", back_populates="companies")
     industry: Mapped[Optional["Industry"]] = relationship("Industry", back_populates="companies")
     financial_data: Mapped[List["FinancialData"]] = relationship("FinancialData", back_populates="company")
+    financial_match_issues: Mapped[List["FinancialMatchIssue"]] = relationship(
+        "FinancialMatchIssue", back_populates="company"
+    )
 
     __table_args__ = (
         Index("ix_companies_status", "status"),
@@ -263,7 +266,10 @@ class AccountSubject(Base):
     # 科目属性
     is_calculated: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否计算字段")
     is_summary: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否汇总科目")
-    is_financial: Mapped[bool] = mapped_column(Boolean, default=False, comment="是否金融企业专用")
+    # 旧生产表仍为 NOT NULL 且无默认值；仅确保新增标准科目可写入，不参与任何业务逻辑。
+    legacy_is_financial: Mapped[bool] = mapped_column(
+        "is_financial", Boolean, default=False, comment="历史兼容字段"
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否激活")
 
     # 排序和层级
@@ -279,8 +285,8 @@ class AccountSubject(Base):
     category: Mapped["AccountCategory"] = relationship("AccountCategory", back_populates="subjects")
     parent: Mapped[Optional["AccountSubject"]] = relationship("AccountSubject", remote_side="AccountSubject.id")
     financial_data: Mapped[List["FinancialData"]] = relationship("FinancialData", back_populates="subject")
-    financial_mappings: Mapped[List["FinancialSubjectMapping"]] = relationship(
-        "FinancialSubjectMapping", back_populates="standard_subject"
+    source_aliases: Mapped[List["AccountSubjectSourceAlias"]] = relationship(
+        "AccountSubjectSourceAlias", back_populates="subject"
     )
 
     __table_args__ = (
@@ -290,6 +296,56 @@ class AccountSubject(Base):
 
     def __repr__(self) -> str:
         return f"<AccountSubject {self.code} - {self.name}>"
+
+
+class AccountSubjectSourceAlias(Base):
+    """外部数据源科目别名，映射目标始终为标准科目表。"""
+    __tablename__ = "account_subject_source_aliases"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    subject_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("account_subjects.id"), index=True, comment="标准科目ID"
+    )
+    source: Mapped[str] = mapped_column(String(50), default="sina", comment="数据源代码")
+    report_type: Mapped[ReportType] = mapped_column(Enum(ReportType), comment="报表类型")
+    source_name: Mapped[str] = mapped_column(String(200), comment="来源原始科目名称")
+    normalized_name: Mapped[str] = mapped_column(
+        String(200), comment="确定性归一化后的来源名称"
+    )
+    # 空字符串表示不要求报表层级上下文，避免 NULL 唯一约束在 MySQL 中失效。
+    context_name: Mapped[str] = mapped_column(
+        String(200), default="", comment="来源父级科目名称"
+    )
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="映射审核说明")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否启用")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    subject: Mapped["AccountSubject"] = relationship(
+        "AccountSubject", back_populates="source_aliases"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "source",
+            "report_type",
+            "source_name",
+            "context_name",
+            name="uq_subject_source_alias",
+        ),
+        Index(
+            "ix_subject_source_alias_normalized",
+            "source",
+            "report_type",
+            "normalized_name",
+            "context_name",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return f"<AccountSubjectSourceAlias {self.source}:{self.source_name}>"
 
 
 # ============================================================
@@ -325,6 +381,15 @@ class FinancialData(Base):
     # 数据来源
     data_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, comment="数据来源")
     crawl_task_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="采集任务ID")
+    source_subject_name: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, comment="来源原始科目名称"
+    )
+    source_context_name: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, comment="来源父级科目名称"
+    )
+    subject_match_method: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True, comment="科目匹配方法"
+    )
 
     # 时间字段
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
@@ -342,6 +407,66 @@ class FinancialData(Base):
 
     def __repr__(self) -> str:
         return f"<FinancialData {self.company_code} - {self.subject_code} - {self.report_date}>"
+
+
+class FinancialMatchIssue(Base):
+    """未匹配、歧义或冲突的来源财务科目，供人工补录和审计。"""
+    __tablename__ = "financial_match_issues"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    company_code: Mapped[str] = mapped_column(
+        String(10), ForeignKey("companies.stock_code"), index=True, comment="公司代码"
+    )
+    report_date: Mapped[date] = mapped_column(Date, index=True, comment="报告日期")
+    report_type: Mapped[ReportType] = mapped_column(Enum(ReportType), comment="报表类型")
+    source: Mapped[str] = mapped_column(String(50), default="sina", comment="数据源代码")
+    raw_subject_name: Mapped[str] = mapped_column(String(200), comment="来源原始科目名称")
+    context_name: Mapped[str] = mapped_column(
+        String(200), default="", comment="来源父级科目名称"
+    )
+    raw_value: Mapped[Optional[Decimal]] = mapped_column(
+        Numeric(20, 4), nullable=True, comment="来源原始数值"
+    )
+    issue_type: Mapped[str] = mapped_column(String(50), comment="unmatched/ambiguous/rejected/conflict")
+    candidate_subject_codes: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True, comment="候选标准科目编码"
+    )
+    detail: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="问题说明")
+    crawl_task_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, comment="采集任务ID")
+    occurrence_count: Mapped[int] = mapped_column(Integer, default=1, comment="出现次数")
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    company: Mapped["Company"] = relationship(
+        "Company", back_populates="financial_match_issues"
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "company_code",
+            "report_date",
+            "report_type",
+            "source",
+            "raw_subject_name",
+            "context_name",
+            "issue_type",
+            name="uq_financial_match_issue",
+        ),
+        Index(
+            "ix_financial_match_issues_lookup",
+            "company_code",
+            "report_type",
+            "report_date",
+        ),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<FinancialMatchIssue {self.company_code} {self.report_type} "
+            f"{self.raw_subject_name} {self.issue_type}>"
+        )
 
 
 # ============================================================
@@ -418,58 +543,6 @@ class CrawlerTask(Base):
 
     def __repr__(self) -> str:
         return f"<CrawlerTask {self.task_name} - {self.status.value}>"
-
-
-class FinancialSubjectMapping(Base):
-    """金融企业科目映射模型 - 处理银行/保险/证券等金融企业特殊科目"""
-    __tablename__ = "financial_subject_mappings"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    
-    # 标准科目关联
-    standard_subject_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("account_subjects.id"), comment="标准科目ID"
-    )
-    
-    # 金融企业科目信息
-    financial_code: Mapped[str] = mapped_column(String(50), comment="金融企业科目代码")
-    financial_name: Mapped[str] = mapped_column(String(100), comment="金融企业科目名称")
-    
-    # 映射规则
-    mapping_rule: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="映射规则")
-    conversion_formula: Mapped[Optional[str]] = mapped_column(Text, nullable=True, comment="转换公式")
-    
-    # 适用范围 (BANK,INSURANCE,SECURITIES)
-    applicable_types: Mapped[str] = mapped_column(
-        String(200), default="BANK,INSURANCE,SECURITIES", comment="适用金融企业类型"
-    )
-    
-    # 状态
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, comment="是否激活")
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
-
-    # 关系
-    standard_subject: Mapped["AccountSubject"] = relationship(
-        "AccountSubject", back_populates="financial_mappings"
-    )
-
-    __table_args__ = (
-        UniqueConstraint("standard_subject_id", "financial_code", name="uq_subject_mapping"),
-        Index("ix_financial_subject_mappings_code", "financial_code"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<FinancialSubjectMapping {self.financial_code} -> {self.standard_subject_id}>"
-
-    @property
-    def applicable_type_list(self) -> list:
-        """适用类型列表"""
-        return self.applicable_types.split(',') if self.applicable_types else []
-
-    def is_applicable_for_type(self, company_type: str) -> bool:
-        """判断是否适用于指定类型的金融企业"""
-        return company_type.upper() in self.applicable_type_list
 
 
 class QualitativeReport(Base):
@@ -771,3 +844,48 @@ class CompanySegment(Base):
 
     def __repr__(self) -> str:
         return f"<CompanySegment {self.company_code} {self.segment_name} {self.report_period}>"
+
+
+class FinancialCoverageSnapshot(Base):
+    """财务数据覆盖率扫描快照"""
+    __tablename__ = "financial_coverage_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # 扫描范围签名，便于按相同 years/report_types/status 取最新快照
+    scope_key: Mapped[str] = mapped_column(String(120), index=True, comment="years|reports|status 签名")
+    years: Mapped[list] = mapped_column(JSON, comment="扫描年份列表")
+    report_types: Mapped[list] = mapped_column(JSON, comment="报表类型列表")
+    status_filter: Mapped[str] = mapped_column(String(20), default="active", comment="公司状态过滤")
+    source: Mapped[str] = mapped_column(
+        String(30), default="manual_scan", comment="manual_scan/post_repair/api"
+    )
+    trigger_task_id: Mapped[Optional[str]] = mapped_column(
+        String(36), nullable=True, index=True, comment="触发本次扫描的采集任务ID"
+    )
+
+    company_count: Mapped[int] = mapped_column(Integer, default=0)
+    matrix_total: Mapped[int] = mapped_column(Integer, default=0)
+    complete_cells: Mapped[int] = mapped_column(Integer, default=0)
+    partial_cells: Mapped[int] = mapped_column(Integer, default=0)
+    missing_cells: Mapped[int] = mapped_column(Integer, default=0)
+    gap_company_count: Mapped[int] = mapped_column(Integer, default=0)
+    coverage_rate: Mapped[Decimal] = mapped_column(Numeric(8, 6), default=0)
+
+    summary: Mapped[dict] = mapped_column(JSON, comment="汇总统计")
+    gap_companies: Mapped[list] = mapped_column(JSON, comment="缺口公司代码列表")
+    # 公司矩阵明细可能较大，用 LongText 兼容 MySQL
+    companies_payload: Mapped[Optional[str]] = mapped_column(
+        LongText, nullable=True, comment="公司矩阵 JSON 字符串"
+    )
+    core_subjects: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, comment="核心科目定义")
+
+    scan_duration_ms: Mapped[int] = mapped_column(Integer, default=0, comment="扫描耗时毫秒")
+    created_by: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+    __table_args__ = (
+        Index("ix_coverage_snapshots_scope_created", "scope_key", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<FinancialCoverageSnapshot {self.id} {self.scope_key} {self.coverage_rate}>"
