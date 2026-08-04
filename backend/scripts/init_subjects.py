@@ -9,7 +9,7 @@ from sqlalchemy import select, delete
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.persistence.db import async_session_factory, engine, init_database
-from backend.persistence.financial_models import AccountCategory, AccountSubject, FinancialSubjectMapping, ReportType, SubjectCategory, DataType
+from backend.persistence.financial_models import AccountCategory, AccountSubject, ReportType, SubjectCategory, DataType
 
 async def init_subjects():
     # 确保数据库表已创建
@@ -66,19 +66,19 @@ async def init_subjects():
             # ========== 合并资产负债表科目 ==========
             # 一、流动资产
             {'code': 'BSA001', 'name': '货币资金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 1},
-            {'code': 'BSA002', 'name': '结算备付金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 2},
-            {'code': 'BSA003', 'name': '拆出资金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 3},
+            {'code': 'BSA002', 'name': '结算备付金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 2},
+            {'code': 'BSA003', 'name': '拆出资金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 3},
             {'code': 'BSA004', 'name': '交易性金融资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 4},
             {'code': 'BSA005', 'name': '衍生金融资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 5},
             {'code': 'BSA006', 'name': '应收票据', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 6},
             {'code': 'BSA007', 'name': '应收账款', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 7},
             {'code': 'BSA008', 'name': '应收款项融资', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 8},
             {'code': 'BSA009', 'name': '预付款项', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 9},
-            {'code': 'BSA010', 'name': '应收保费', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 10},
-            {'code': 'BSA011', 'name': '应收分保账款', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 11},
-            {'code': 'BSA012', 'name': '应收分保合同准备金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 12},
+            {'code': 'BSA010', 'name': '应收保费', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 10},
+            {'code': 'BSA011', 'name': '应收分保账款', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 11},
+            {'code': 'BSA012', 'name': '应收分保合同准备金', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 12},
             {'code': 'BSA013', 'name': '其他应收款', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 13},
-            {'code': 'BSA014', 'name': '买入返售金融资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 14},
+            {'code': 'BSA014', 'name': '买入返售金融资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 14},
             {'code': 'BSA015', 'name': '存货', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 15},
             {'code': 'BSA016', 'name': '合同资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 16},
             {'code': 'BSA017', 'name': '持有待售资产', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 17},
@@ -89,7 +89,7 @@ async def init_subjects():
             {'code': 'BSA022', 'name': '应收利息', 'category_code': 'BS_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 14},
             
             # 二、非流动资产
-            {'code': 'BSA101', 'name': '发放贷款和垫款', 'category_code': 'BS_NON_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'is_financial': True, 'sort_order': 101},
+            {'code': 'BSA101', 'name': '发放贷款和垫款', 'category_code': 'BS_NON_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 101},
             {'code': 'BSA102', 'name': '债权投资', 'category_code': 'BS_NON_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 102},
             {'code': 'BSA103', 'name': '其他债权投资', 'category_code': 'BS_NON_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 103},
             {'code': 'BSA104', 'name': '长期应收款', 'category_code': 'BS_NON_CURRENT_ASSETS', 'report_type': ReportType.BS, 'subject_category': 'A', 'sort_order': 104},
@@ -113,23 +113,23 @@ async def init_subjects():
 
             # 三、流动负债
             {'code': 'BSL001', 'name': '短期借款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 1},
-            {'code': 'BSL002', 'name': '向中央银行借款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 2},
-            {'code': 'BSL003', 'name': '拆入资金', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 3},
+            {'code': 'BSL002', 'name': '向中央银行借款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 2},
+            {'code': 'BSL003', 'name': '拆入资金', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 3},
             {'code': 'BSL004', 'name': '交易性金融负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 4},
             {'code': 'BSL005', 'name': '衍生金融负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 5},
             {'code': 'BSL006', 'name': '应付票据', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 6},
             {'code': 'BSL007', 'name': '应付账款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 7},
             {'code': 'BSL008', 'name': '预收款项', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 8},
             {'code': 'BSL009', 'name': '合同负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 9},
-            {'code': 'BSL010', 'name': '卖出回购金融资产款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 10},
-            {'code': 'BSL011', 'name': '吸收存款及同业存放', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 11},
-            {'code': 'BSL012', 'name': '代理买卖证券款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 12},
-            {'code': 'BSL013', 'name': '代理承销证券款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 13},
+            {'code': 'BSL010', 'name': '卖出回购金融资产款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 10},
+            {'code': 'BSL011', 'name': '吸收存款及同业存放', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 11},
+            {'code': 'BSL012', 'name': '代理买卖证券款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 12},
+            {'code': 'BSL013', 'name': '代理承销证券款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 13},
             {'code': 'BSL014', 'name': '应付职工薪酬', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 14},
             {'code': 'BSL015', 'name': '应交税费', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 15},
             {'code': 'BSL016', 'name': '其他应付款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 16},
-            {'code': 'BSL017', 'name': '应付手续费及佣金', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 17},
-            {'code': 'BSL018', 'name': '应付分保账款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 18},
+            {'code': 'BSL017', 'name': '应付手续费及佣金', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 17},
+            {'code': 'BSL018', 'name': '应付分保账款', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 18},
             {'code': 'BSL019', 'name': '持有待售负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 19},
             {'code': 'BSL020', 'name': '一年内到期的非流动负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 20},
             {'code': 'BSL021', 'name': '其他流动负债', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 21},
@@ -138,7 +138,7 @@ async def init_subjects():
             {'code': 'BSL024', 'name': '应付利息', 'category_code': 'BS_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 17},
 
             # 四、非流动负债
-            {'code': 'BSL101', 'name': '保险合同准备金', 'category_code': 'BS_NON_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'is_financial': True, 'sort_order': 101},
+            {'code': 'BSL101', 'name': '保险合同准备金', 'category_code': 'BS_NON_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 101},
             {'code': 'BSL102', 'name': '长期借款', 'category_code': 'BS_NON_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 102},
             {'code': 'BSL103', 'name': '应付债券', 'category_code': 'BS_NON_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 103},
             {'code': 'BSL104', 'name': '租赁负债', 'category_code': 'BS_NON_CURRENT_LIABILITIES', 'report_type': ReportType.BS, 'subject_category': 'L', 'sort_order': 104},
@@ -159,7 +159,7 @@ async def init_subjects():
             {'code': 'BSE005', 'name': '其他综合收益', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 5},
             {'code': 'BSE006', 'name': '专项储备', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 6},
             {'code': 'BSE007', 'name': '盈余公积', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 7},
-            {'code': 'BSE008', 'name': '一般风险准备', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'is_financial': True, 'sort_order': 8},
+            {'code': 'BSE008', 'name': '一般风险准备', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 8},
             {'code': 'BSE009', 'name': '未分配利润', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 9},
             {'code': 'BSE010', 'name': '归属于母公司所有者权益合计', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'is_summary': True, 'sort_order': 10},
             {'code': 'BSE011', 'name': '少数股东权益', 'category_code': 'BS_EQUITY', 'report_type': ReportType.BS, 'subject_category': 'E', 'sort_order': 11},
@@ -169,20 +169,20 @@ async def init_subjects():
             # ========== 合并利润表科目 ==========
             # 一、营业总收入
             {'code': 'ISI001', 'name': '营业收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'sort_order': 1},
-            {'code': 'ISI002', 'name': '利息收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'is_financial': True, 'sort_order': 2},
-            {'code': 'ISI003', 'name': '已赚保费', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'is_financial': True, 'sort_order': 3},
-            {'code': 'ISI004', 'name': '手续费及佣金收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'is_financial': True, 'sort_order': 4},
+            {'code': 'ISI002', 'name': '利息收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'sort_order': 2},
+            {'code': 'ISI003', 'name': '已赚保费', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'sort_order': 3},
+            {'code': 'ISI004', 'name': '手续费及佣金收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'sort_order': 4},
             {'code': 'ISI005', 'name': '营业总收入', 'category_code': 'IS_REVENUE', 'report_type': ReportType.IS, 'subject_category': 'I', 'is_summary': True, 'sort_order': 5},
             
             # 二、营业总成本
             {'code': 'ISC001', 'name': '营业成本', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 1},
-            {'code': 'ISC002', 'name': '利息支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 2},
-            {'code': 'ISC003', 'name': '手续费及佣金支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 3},
-            {'code': 'ISC004', 'name': '退保金', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 4},
-            {'code': 'ISC005', 'name': '赔付支出净额', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 5},
-            {'code': 'ISC006', 'name': '提取保险合同准备金净额', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 6},
-            {'code': 'ISC007', 'name': '保单红利支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 7},
-            {'code': 'ISC008', 'name': '分保费用', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_financial': True, 'sort_order': 8},
+            {'code': 'ISC002', 'name': '利息支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 2},
+            {'code': 'ISC003', 'name': '手续费及佣金支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 3},
+            {'code': 'ISC004', 'name': '退保金', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 4},
+            {'code': 'ISC005', 'name': '赔付支出净额', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 5},
+            {'code': 'ISC006', 'name': '提取保险合同准备金净额', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 6},
+            {'code': 'ISC007', 'name': '保单红利支出', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 7},
+            {'code': 'ISC008', 'name': '分保费用', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 8},
             {'code': 'ISC009', 'name': '营业税金及附加', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'sort_order': 9},
             {'code': 'ISC010', 'name': '营业总成本', 'category_code': 'IS_COSTS', 'report_type': ReportType.IS, 'subject_category': 'C', 'is_summary': True, 'sort_order': 10},
             
@@ -215,20 +215,20 @@ async def init_subjects():
             # ========== 合并现金流量表科目 ==========
             # 一、经营活动
             {'code': 'CFO001', 'name': '销售商品、提供劳务收到的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 1},
-            {'code': 'CFO002', 'name': '客户存款和同业存放款项净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 2},
-            {'code': 'CFO003', 'name': '向中央银行借款净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 3},
-            {'code': 'CFO004', 'name': '向其他金融机构拆入资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 4},
-            {'code': 'CFO005', 'name': '收取利息、手续费及佣金的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 5},
-            {'code': 'CFO006', 'name': '拆入资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 6},
-            {'code': 'CFO007', 'name': '回购业务资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 7},
-            {'code': 'CFO008', 'name': '代理买卖证券收到的现金净额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 8},
+            {'code': 'CFO002', 'name': '客户存款和同业存放款项净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 2},
+            {'code': 'CFO003', 'name': '向中央银行借款净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 3},
+            {'code': 'CFO004', 'name': '向其他金融机构拆入资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 4},
+            {'code': 'CFO005', 'name': '收取利息、手续费及佣金的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 5},
+            {'code': 'CFO006', 'name': '拆入资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 6},
+            {'code': 'CFO007', 'name': '回购业务资金净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 7},
+            {'code': 'CFO008', 'name': '代理买卖证券收到的现金净额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 8},
             {'code': 'CFO009', 'name': '收到的税费返还', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 9},
             {'code': 'CFO010', 'name': '收到其他与经营活动有关的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 10},
             {'code': 'CFO011', 'name': '经营活动现金流入小计', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_summary': True, 'sort_order': 11},
             {'code': 'CFO012', 'name': '购买商品、接受劳务支付的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 12},
-            {'code': 'CFO013', 'name': '客户贷款及垫款净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 13},
-            {'code': 'CFO014', 'name': '存放中央银行和同业款项净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 14},
-            {'code': 'CFO015', 'name': '支付利息、手续费及佣金的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'is_financial': True, 'sort_order': 15},
+            {'code': 'CFO013', 'name': '客户贷款及垫款净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 13},
+            {'code': 'CFO014', 'name': '存放中央银行和同业款项净增加额', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 14},
+            {'code': 'CFO015', 'name': '支付利息、手续费及佣金的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 15},
             {'code': 'CFO016', 'name': '支付给职工以及为职工支付的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 16},
             {'code': 'CFO017', 'name': '支付的各项税费', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 17},
             {'code': 'CFO018', 'name': '支付其他与经营活动有关的现金', 'category_code': 'CF_OPERATING', 'report_type': ReportType.CF, 'subject_category': 'O', 'sort_order': 18},
@@ -279,70 +279,6 @@ async def init_subjects():
                 subject = AccountSubject(**data)
                 session.add(subject)
                 print(f"创建科目: {subject.code} - {subject.name}")
-
-        await session.commit()
-
-        # 3. 创建金融企业科目映射
-        mappings_data = [
-            # 银行业
-            {
-                'standard_subject_code': 'BSA002',
-                'financial_code': 'BSA002_BANK',
-                'financial_name': '结算备付金(银行)',
-                'applicable_types': 'BANK',
-                'mapping_rule': '银行业结算备付金科目'
-            },
-            {
-                'standard_subject_code': 'BSA101',
-                'financial_code': 'BSA101_BANK',
-                'financial_name': '发放贷款和垫款',
-                'applicable_types': 'BANK',
-                'mapping_rule': '银行放贷业务'
-            },
-            {
-                'standard_subject_code': 'BSL011',
-                'financial_code': 'BSL011_BANK',
-                'financial_name': '吸收存款及同业存放',
-                'applicable_types': 'BANK',
-                'mapping_rule': '银行存款负债'
-            },
-            # 保险业
-            {
-                'standard_subject_code': 'BSA010',
-                'financial_code': 'BSA010_INS',
-                'financial_name': '应收保费',
-                'applicable_types': 'INSURANCE',
-                'mapping_rule': '保险公司应收保费'
-            },
-            {
-                'standard_subject_code': 'BSL101',
-                'financial_code': 'BSL101_INS',
-                'financial_name': '保险合同准备金',
-                'applicable_types': 'INSURANCE',
-                'mapping_rule': '保险责任准备金'
-            },
-        ]
-
-        for data in mappings_data:
-            standard_code = data.pop('standard_subject_code')
-            stmt = select(AccountSubject).where(AccountSubject.code == standard_code)
-            result = await session.execute(stmt)
-            standard_subject = result.scalar_one_or_none()
-            
-            if standard_subject:
-                stmt_map = select(FinancialSubjectMapping).where(FinancialSubjectMapping.financial_code == data['financial_code'])
-                res_map = await session.execute(stmt_map)
-                mapping = res_map.scalar_one_or_none()
-                
-                if not mapping:
-                    mapping = FinancialSubjectMapping(
-                        standard_subject_id=standard_subject.id,
-                        **data
-                    )
-                    session.add(mapping)
-                    print(f"创建映射: {mapping.financial_code} -> {standard_code}")
-            else:
-                print(f"警告: 未找到标准科目 {standard_code}")
 
         await session.commit()
         print("初始化科目数据完成！")

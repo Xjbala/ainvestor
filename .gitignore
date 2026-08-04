@@ -148,3 +148,6 @@ dump.rdb
 
 # ================== Private Spec / Secrets ==================
 spec0207.md
+
+# AgentScope 2.0 spike venv (local only)
+.venv-as205-spike/

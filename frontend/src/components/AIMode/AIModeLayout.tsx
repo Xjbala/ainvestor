@@ -10,6 +10,7 @@ import remarkGfm from 'remark-gfm';
 import { stripThinkingContent } from '../../utils/reportUtils';
 import {
     extractValuationMethodBreakdown,
+    isUnavailableTargetPrice,
     parseTargetPriceNumber,
 } from '../../utils/metricExtraction';
 import { companyApi } from '../../services/companyApi';
@@ -125,6 +126,10 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
         (valData.status === 'pending' && !valuationBreakdown);
 
     const upsideFromBreakdown = useMemo(() => {
+        if (isUnavailableTargetPrice(metrics?.targetPrice)) {
+            return null;
+        }
+
         // 1) 文案中的上涨/下跌空间（已排除“方法分歧”误匹配）
         if (metrics?.valuationGap != null && Number.isFinite(Number(metrics.valuationGap))) {
             return Number(metrics.valuationGap);
@@ -309,9 +314,11 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                             : (analysisStatus === 'completed' || analysisStatus === 'failed' ? '—' : '计算中...'))
                 }
                 returnRate={
-                    upsideFromBreakdown != null
-                        ? Number(upsideFromBreakdown.toFixed(1))
-                        : (analysisStatus === 'completed' || analysisStatus === 'failed' ? '—' : '计算中...')
+                    isUnavailableTargetPrice(metrics?.targetPrice)
+                        ? '无法评估'
+                        : (upsideFromBreakdown != null
+                            ? Number(upsideFromBreakdown.toFixed(1))
+                            : (analysisStatus === 'completed' || analysisStatus === 'failed' ? '—' : '计算中...'))
                 }
                 onViewDetail={() => {
                     if (report && report.trim().length > 0) {

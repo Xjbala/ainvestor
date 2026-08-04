@@ -199,13 +199,40 @@ export const crawlerApi = {
      * 全量财务数据批量采集
      * 自动获取所有活跃公司，并发采集三大报表
      */
-    async createBatchFinancialTask(years?: number[]): Promise<Task> {
+    async createBatchFinancialTask(years?: number[], targetCompanies?: string[]): Promise<Task> {
         return fetchJson<Task>(`${API_BASE}/tasks/batch-financial`, {
             method: 'POST',
             body: JSON.stringify({
                 task_name: years ? `全量财务数据采集(${years.join('-')})` : '全量财务数据批量采集',
                 data_source_code: 'sina',
                 years,
+                target_companies: targetCompanies,
+            }),
+        });
+    },
+
+    /**
+     * 财务数据缺口补采
+     * 默认先扫描核心科目缺口，再只对缺口公司发起批量采集
+     */
+    async createFinancialRepairTask(options?: {
+        years?: number[];
+        targetCompanies?: string[];
+        reportTypes?: string[];
+        maxCompanies?: number;
+        autoDetect?: boolean;
+        taskName?: string;
+    }): Promise<Task> {
+        return fetchJson<Task>(`${API_BASE}/tasks/repair-financial`, {
+            method: 'POST',
+            body: JSON.stringify({
+                task_name: options?.taskName || '财务数据缺口补采',
+                data_source_code: 'sina',
+                years: options?.years,
+                target_companies: options?.targetCompanies,
+                report_types: options?.reportTypes || ['BS', 'IS', 'CF'],
+                max_companies: options?.maxCompanies ?? 500,
+                auto_detect: options?.autoDetect ?? true,
             }),
         });
     },

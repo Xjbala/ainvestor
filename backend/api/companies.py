@@ -6,7 +6,7 @@
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
@@ -26,6 +26,25 @@ from ..persistence.financial_models import (
 )
 from ..crawler.crawler_engine import crawler_engine
 from ..crawler.sina_crawler import SinaCrawlerService
+from ..analysis.financial_validation import (
+    CORE_SUBJECTS,
+    core_subjects_for_profile,
+    validate_period,
+    validation_profile_for_industry,
+    summarize_periods,
+)
+from ..analysis.coverage_service import (
+    default_coverage_years,
+    normalize_report_types,
+    build_scope_key,
+    scan_coverage,
+    scan_and_save,
+    get_latest_snapshot,
+    list_snapshots,
+    snapshot_to_dict,
+    paginate_coverage_result,
+    core_subjects_payload,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/companies", tags=["公司管理"])
@@ -188,6 +207,302 @@ async def get_statistics(session: AsyncSession = Depends(get_db_session)):
         active_count=active,
         exchange_statistics=exchange_stats
     )
+
+
+def _parse_years_param(years: Optional[str]) -> List[int]:
+    if not years:
+        return default_coverage_years()
+    return default_coverage_years(
+        [int(y.strip()) for y in years.split(",") if y.strip().isdigit()]
+    )
+
+
+@router.get("/financial-coverage")
+async def get_financial_coverage(
+    years: Optional[str] = Query(
+        None,
+        description="逗号分隔年份，如 2021,2022,2023；默认最近5个完整财年",
+    ),
+    report_types: str = Query("BS,IS,CF", description="报表类型，逗号分隔"),
+    status_filter: str = Query("active", description="公司状态: active/all"),
+    search: Optional[str] = Query(None, description="按代码/名称过滤公司宇宙"),
+    stock_codes: Optional[str] = Query(None, description="逗号分隔股票代码，限定扫描范围"),
+    only_gaps: bool = Query(False, description="仅返回有缺口的公司"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+    include_cells: bool = Query(True, description="是否返回每公司矩阵明细"),
+    use_snapshot: bool = Query(
+        True,
+        description="优先读取最新快照；无快照或局部过滤时回退在线扫描",
+    ),
+    refresh: bool = Query(False, description="强制在线重扫（全市场时会落库新快照）"),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    财务数据覆盖率看板。
+
+    默认读最新快照；可 refresh=true 强制重扫并落库。
+    带 stock_codes/search 的局部查询始终在线计算，不覆盖全市场快照。
+    """
+    year_list = _parse_years_param(years)
+    rt_list = normalize_report_types(
+        [rt.strip() for rt in report_types.split(",") if rt.strip()]
+    )
+    codes = [c.strip() for c in (stock_codes or "").split(",") if c.strip()] or None
+    is_partial = bool(codes) or bool(search and search.strip())
+
+    raw: Dict[str, Any]
+    if refresh and not is_partial:
+        raw = await scan_and_save(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+            source="api_refresh",
+        )
+    elif use_snapshot and not is_partial and not refresh:
+        snap = await get_latest_snapshot(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+        )
+        if snap:
+            raw = snapshot_to_dict(snap, include_companies=True)
+            raw["status_filter"] = status_filter
+        else:
+            raw = await scan_coverage(
+                session,
+                years=year_list,
+                report_types=rt_list,
+                status_filter=status_filter,
+            )
+    else:
+        raw = await scan_coverage(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+            stock_codes=codes,
+            search=search if is_partial else None,
+        )
+
+    return paginate_coverage_result(
+        raw,
+        only_gaps=only_gaps,
+        page=page,
+        page_size=page_size,
+        include_cells=include_cells,
+        search=None if is_partial and codes else search,
+    )
+
+
+@router.post("/financial-coverage/scan")
+async def scan_financial_coverage(
+    years: Optional[str] = Query(None, description="逗号分隔年份"),
+    report_types: str = Query("BS,IS,CF"),
+    status_filter: str = Query("active"),
+    persist: bool = Query(True, description="是否落库快照"),
+    session: AsyncSession = Depends(get_db_session),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """
+    手动触发全市场覆盖率扫描。
+
+    默认落库快照，供后续看板秒开。
+    """
+    year_list = _parse_years_param(years)
+    rt_list = normalize_report_types(
+        [rt.strip() for rt in report_types.split(",") if rt.strip()]
+    )
+    created_by = current_user.id if current_user else None
+    if persist:
+        raw = await scan_and_save(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+            source="manual_scan",
+            created_by=created_by,
+        )
+    else:
+        raw = await scan_coverage(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+        )
+    return paginate_coverage_result(
+        raw,
+        only_gaps=False,
+        page=1,
+        page_size=20,
+        include_cells=False,
+    )
+
+
+@router.get("/financial-coverage/snapshots")
+async def list_financial_coverage_snapshots(
+    years: Optional[str] = Query(None),
+    report_types: str = Query("BS,IS,CF"),
+    status_filter: str = Query("active"),
+    limit: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """列出覆盖率快照历史（不含公司明细）。"""
+    year_list = _parse_years_param(years)
+    rt_list = normalize_report_types(
+        [rt.strip() for rt in report_types.split(",") if rt.strip()]
+    )
+    scope = build_scope_key(year_list, rt_list, status_filter)
+    snaps = await list_snapshots(session, scope_key=scope, limit=limit)
+    return {
+        "scope_key": scope,
+        "items": [
+            {
+                "snapshot_id": s.id,
+                "scope_key": s.scope_key,
+                "years": s.years,
+                "report_types": s.report_types,
+                "status_filter": s.status_filter,
+                "source": s.source,
+                "trigger_task_id": s.trigger_task_id,
+                "company_count": s.company_count,
+                "gap_company_count": s.gap_company_count,
+                "coverage_rate": float(s.coverage_rate or 0),
+                "complete_cells": s.complete_cells,
+                "partial_cells": s.partial_cells,
+                "missing_cells": s.missing_cells,
+                "matrix_total": s.matrix_total,
+                "scan_duration_ms": s.scan_duration_ms,
+                "scanned_at": s.created_at.isoformat() if s.created_at else None,
+            }
+            for s in snaps
+        ],
+    }
+
+
+@router.get("/financial-coverage/snapshots/{snapshot_id}")
+async def get_financial_coverage_snapshot(
+    snapshot_id: int,
+    only_gaps: bool = Query(False),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+    include_cells: bool = Query(True),
+    search: Optional[str] = Query(None),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """读取指定快照详情。"""
+    from ..persistence.financial_models import FinancialCoverageSnapshot
+
+    snap = await session.get(FinancialCoverageSnapshot, snapshot_id)
+    if not snap:
+        raise HTTPException(status_code=404, detail="快照不存在")
+    raw = snapshot_to_dict(snap, include_companies=True)
+    return paginate_coverage_result(
+        raw,
+        only_gaps=only_gaps,
+        page=page,
+        page_size=page_size,
+        include_cells=include_cells,
+        search=search,
+    )
+
+
+@router.get("/financial-gaps")
+async def get_financial_gaps(
+    years: Optional[str] = Query(None, description="逗号分隔年份"),
+    report_types: str = Query("BS,IS,CF"),
+    status_filter: str = Query("active"),
+    search: Optional[str] = Query(None),
+    stock_codes: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=2000, description="最多返回多少个缺口单元"),
+    use_snapshot: bool = Query(True, description="优先使用快照"),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    返回可直接用于补采的缺口清单。
+
+    每个 gap: company + report_type + year + missing_required
+    """
+    coverage = await get_financial_coverage(
+        years=years,
+        report_types=report_types,
+        status_filter=status_filter,
+        search=search,
+        stock_codes=stock_codes,
+        only_gaps=True,
+        page=1,
+        page_size=100000,
+        include_cells=True,
+        use_snapshot=use_snapshot,
+        refresh=False,
+        session=session,
+    )
+
+    gaps: List[Dict[str, Any]] = []
+    for company in coverage["companies"]:
+        for cell in company.get("cells") or []:
+            if cell.get("status") == "complete":
+                continue
+            gaps.append(
+                {
+                    "stock_code": company["stock_code"],
+                    "stock_name": company["stock_name"],
+                    "year": cell["year"],
+                    "report_type": cell["report_type"],
+                    "status": cell["status"],
+                    "core_hit_rate": cell["core_hit_rate"],
+                    "missing_required": cell.get("missing_required") or [],
+                    "missing_optional": cell.get("missing_optional") or [],
+                }
+            )
+            if len(gaps) >= limit:
+                break
+        if len(gaps) >= limit:
+            break
+
+    repair_targets: Dict[str, Dict[str, Any]] = {}
+    for g in gaps:
+        code = g["stock_code"]
+        item = repair_targets.setdefault(
+            code,
+            {
+                "stock_code": code,
+                "stock_name": g["stock_name"],
+                "years": set(),
+                "report_types": set(),
+                "gap_count": 0,
+            },
+        )
+        item["years"].add(g["year"])
+        item["report_types"].add(g["report_type"])
+        item["gap_count"] += 1
+
+    targets = []
+    for item in repair_targets.values():
+        targets.append(
+            {
+                "stock_code": item["stock_code"],
+                "stock_name": item["stock_name"],
+                "years": sorted(item["years"]),
+                "report_types": sorted(item["report_types"]),
+                "gap_count": item["gap_count"],
+            }
+        )
+    targets.sort(key=lambda x: (-x["gap_count"], x["stock_code"]))
+
+    return {
+        "years": coverage["years"],
+        "report_types": coverage["report_types"],
+        "summary": coverage["summary"],
+        "gap_count": len(gaps),
+        "gaps": gaps,
+        "repair_targets": targets,
+        "from_snapshot": coverage.get("from_snapshot"),
+        "snapshot_id": coverage.get("snapshot_id"),
+        "scanned_at": coverage.get("scanned_at"),
+    }
 
 
 @router.post("", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
@@ -408,11 +723,57 @@ class FinancialDataItem(BaseModel):
     subject_name: str
     value: Optional[float] = None
 
+class SubjectCheckItem(BaseModel):
+    code: str
+    name: str
+    required: bool
+    present: bool
+    value: Optional[float] = None
+
+class AccountingCheckItem(BaseModel):
+    key: str
+    name: str
+    passed: bool
+    left_label: str
+    left_value: Optional[float] = None
+    right_label: str
+    right_value: Optional[float] = None
+    diff: Optional[float] = None
+    message: str = ""
+    severity: str = "error"
+
+class PeriodValidationItem(BaseModel):
+    report_type: str
+    report_date: str
+    status: str
+    subject_count: int = 0
+    core_total: int = 0
+    core_present: int = 0
+    core_required_total: int = 0
+    core_required_present: int = 0
+    core_hit_rate: float = 0.0
+    missing_required: List[Dict[str, str]] = []
+    missing_optional: List[Dict[str, str]] = []
+    core_subjects: List[SubjectCheckItem] = []
+    accounting_checks: List[AccountingCheckItem] = []
+    summary: str = ""
+
+class ValidationSummary(BaseModel):
+    overall_status: str
+    period_count: int = 0
+    pass_count: int = 0
+    partial_count: int = 0
+    fail_count: int = 0
+    empty_count: int = 0
+    avg_core_hit_rate: float = 0.0
+    summary: str = ""
+
 class FinancialDataPeriod(BaseModel):
     """单个报告期的全部科目"""
     report_date: str
     report_period: str
     items: List[FinancialDataItem]
+    validation: Optional[PeriodValidationItem] = None
 
 class FinancialDataResponse(BaseModel):
     """财务数据响应"""
@@ -420,6 +781,8 @@ class FinancialDataResponse(BaseModel):
     company_name: str
     report_type: str
     periods: List[FinancialDataPeriod]
+    validation_summary: Optional[ValidationSummary] = None
+    core_subjects: Optional[List[Dict[str, Any]]] = None
 
 
 @router.get("/{stock_code}/financial-data", response_model=FinancialDataResponse)
@@ -432,7 +795,8 @@ async def get_financial_data(
     """
     获取公司原始财务数据（资产负债表/利润表/现金流量表）
 
-    返回多年对比数据，按报告期分组，每个科目包含代码、名称和数值。
+    返回多年对比数据，按报告期分组，每个科目包含代码、名称和数值，
+    并附带核心科目完整性与会计勾稽校验结果。
     """
     # 1. 验证公司
     stmt = select(Company).where(Company.stock_code == stock_code)
@@ -448,7 +812,18 @@ async def get_financial_data(
         raise HTTPException(status_code=400, detail=f"无效的报表类型: {report_type}")
 
     # 3. 查询财务数据 + 科目名称
-    # 只取年报数据（report_period = annual），按 report_date 降序
+    industry_code = None
+    industry_name = None
+    if company.industry_id:
+        industry_code, industry_name = (
+            await session.execute(
+                select(Industry.code, Industry.name).where(Industry.id == company.industry_id)
+            )
+        ).one_or_none() or (None, None)
+    validation_profile = validation_profile_for_industry(
+        industry_code, industry_name, company.stock_name or company.company_name
+    )
+    # 优先年报：每年只保留一个报告期（12-31 优先，否则取该年最新一期）
     stmt = (
         select(FinancialData, AccountSubject.name)
         .outerjoin(AccountSubject, FinancialData.subject_id == AccountSubject.id)
@@ -456,42 +831,96 @@ async def get_financial_data(
             FinancialData.company_code == stock_code,
             FinancialData.report_type == rt,
         )
-        .order_by(FinancialData.report_date.desc(), AccountSubject.sort_order if AccountSubject.sort_order is not None else FinancialData.subject_code)
+        .order_by(
+            FinancialData.report_date.desc(),
+            # MySQL 不支持 NULLS LAST；用 ISNULL 把空 sort_order 排后
+            func.isnull(AccountSubject.sort_order).asc(),
+            AccountSubject.sort_order.asc(),
+            FinancialData.subject_code.asc(),
+        )
     )
     rows = (await session.execute(stmt)).all()
 
-    # 4. 按 report_date 分组，限制 years 个年度
-    periods_map: Dict[str, List[FinancialDataItem]] = {}
+    # 4. 先按 report_date 聚合，再按年份择优，限制 years 个年度
+    raw_periods: Dict[str, List[FinancialDataItem]] = {}
     period_labels: Dict[str, str] = {}
-    seen_dates = set()
     for fd, subject_name in rows:
+        if not fd.report_date:
+            continue
         rd = str(fd.report_date)
-        if rd not in periods_map:
-            if len(seen_dates) >= years:
-                continue
-            seen_dates.add(rd)
-            periods_map[rd] = []
-            rp = fd.report_period.value if fd.report_period else "annual"
-            period_labels[rd] = rp
-        if rd in periods_map:
-            val = float(fd.value_decimal) if fd.value_decimal is not None else None
-            periods_map[rd].append(
-                FinancialDataItem(
-                    subject_code=fd.subject_code or "",
-                    subject_name=subject_name or fd.subject_code or "",
-                    value=val,
-                )
+        if rd not in raw_periods:
+            raw_periods[rd] = []
+            if fd.report_period:
+                period_labels[rd] = fd.report_period.value
+            elif fd.report_date.month == 12:
+                period_labels[rd] = "annual"
+            elif fd.report_date.month == 6:
+                period_labels[rd] = "semi_annual"
+            elif fd.report_date.month == 3:
+                period_labels[rd] = "q1"
+            elif fd.report_date.month == 9:
+                period_labels[rd] = "q3"
+            else:
+                period_labels[rd] = "annual"
+        val = float(fd.value_decimal) if fd.value_decimal is not None else None
+        raw_periods[rd].append(
+            FinancialDataItem(
+                subject_code=fd.subject_code or "",
+                subject_name=subject_name or fd.subject_code or "",
+                value=val,
             )
+        )
 
-    periods = [
-        FinancialDataPeriod(
-            report_date=rd,
-            report_period=period_labels.get(rd, "annual"),
-            items=items,
+    # year -> 选中的 report_date
+    selected_by_year: Dict[int, str] = {}
+    for rd in sorted(raw_periods.keys(), reverse=True):
+        try:
+            y = int(rd[:4])
+            month = int(rd[5:7])
+        except (TypeError, ValueError):
+            continue
+        prev = selected_by_year.get(y)
+        if prev is None:
+            selected_by_year[y] = rd
+            continue
+        # 已有候选时：12 月年报优先；同为非年报则保留更新的一期（已按 desc 遍历）
+        try:
+            prev_month = int(prev[5:7])
+        except (TypeError, ValueError):
+            prev_month = 0
+        if month == 12 and prev_month != 12:
+            selected_by_year[y] = rd
+
+    chosen_years = sorted(selected_by_year.keys(), reverse=True)[:years]
+    periods_map: Dict[str, List[FinancialDataItem]] = {
+        selected_by_year[y]: raw_periods[selected_by_year[y]]
+        for y in chosen_years
+        if selected_by_year[y] in raw_periods
+    }
+
+    period_validations = []
+    periods: List[FinancialDataPeriod] = []
+    for rd, items in sorted(periods_map.items(), key=lambda x: x[0], reverse=True):
+        validation = validate_period(
+            report_type,
+            rd,
+            [item.model_dump() for item in items],
+            profile=validation_profile,
         )
-        for rd, items in sorted(
-            periods_map.items(), key=lambda x: x[0], reverse=True
+        period_validations.append(validation)
+        periods.append(
+            FinancialDataPeriod(
+                report_date=rd,
+                report_period=period_labels.get(rd, "annual"),
+                items=items,
+                validation=PeriodValidationItem(**validation.to_dict()),
+            )
         )
+
+    summary = summarize_periods(period_validations)
+    core_defs = [
+        {"code": s["code"], "name": s["name"], "required": bool(s.get("required"))}
+        for s in core_subjects_for_profile(report_type, validation_profile)
     ]
 
     return FinancialDataResponse(
@@ -499,7 +928,42 @@ async def get_financial_data(
         company_name=company.stock_name or company.company_name or stock_code,
         report_type=report_type,
         periods=periods,
+        validation_summary=ValidationSummary(**summary),
+        core_subjects=core_defs,
     )
+
+
+@router.get("/{stock_code}/financial-validation")
+async def get_financial_validation(
+    stock_code: str,
+    report_type: str = Query("BS", description="报表类型: BS/IS/CF"),
+    years: int = Query(5, ge=1, le=20, description="查询年数"),
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    仅返回财务数据完整性 / 勾稽校验结果（不返回全部科目明细）。
+    """
+    data = await get_financial_data(
+        stock_code=stock_code,
+        report_type=report_type,
+        years=years,
+        session=session,
+    )
+    return {
+        "company_code": data.company_code,
+        "company_name": data.company_name,
+        "report_type": data.report_type,
+        "validation_summary": data.validation_summary,
+        "core_subjects": data.core_subjects,
+        "periods": [
+            {
+                "report_date": p.report_date,
+                "report_period": p.report_period,
+                "validation": p.validation,
+            }
+            for p in data.periods
+        ],
+    }
 
 
 def _company_to_response(c: Company) -> CompanyResponse:

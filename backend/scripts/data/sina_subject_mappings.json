@@ -1,0 +1,49 @@
+{
+  "source": "sina",
+  "primary_sina_names": [
+    {"report_type": "BS", "subject_code": "BSA017", "sina_name": "划分为持有待售的资产", "note": "新浪常用展示名称"},
+    {"report_type": "BS", "subject_code": "BSL019", "sina_name": "划分为持有待售的负债", "note": "新浪常用展示名称"},
+    {"report_type": "BS", "subject_code": "BSE010", "sina_name": "归属于母公司股东权益合计", "note": "新浪常用展示名称"}
+  ],
+  "aliases": [
+    {"report_type": "BS", "subject_code": "BSA017", "source_name": "持有待售资产", "note": "同义展示名称"},
+    {"report_type": "BS", "subject_code": "BSL019", "source_name": "持有待售负债", "note": "同义展示名称"},
+    {"report_type": "BS", "subject_code": "BSE001", "source_name": "实收资本(或股本)", "note": "全半角括号变体"},
+    {"report_type": "BS", "subject_code": "BSE010", "source_name": "归属于母公司所有者权益合计", "note": "会计准则展示名称"},
+    {"report_type": "BS", "subject_code": "BSE012", "source_name": "所有者权益(或股东权益)合计", "note": "全半角括号变体"},
+    {"report_type": "BS", "subject_code": "BSE013", "source_name": "负债及股东权益总计", "note": "新浪展示变体，保留生产主名称"},
+    {"report_type": "IS", "subject_code": "ISC009", "source_name": "税金及附加", "note": "新准则展示名称，保留生产主名称"},
+    {"report_type": "BS", "subject_code": "BSE013", "source_name": "负债和所有者权益(或股东权益)总计", "note": "全半角括号变体"},
+    {"report_type": "IS", "subject_code": "ISC009", "source_name": "营业税金及附加", "note": "旧准则展示名称"},
+    {"report_type": "IS", "subject_code": "ISF007", "source_name": "加：其他收益", "note": "填列前缀变体"},
+    {"report_type": "IS", "subject_code": "ISF017", "source_name": "加：营业外收入", "note": "填列前缀变体"},
+    {"report_type": "IS", "subject_code": "ISF018", "source_name": "减：营业外支出", "note": "填列前缀变体"},
+    {"report_type": "IS", "subject_code": "ISF005", "source_name": "其中：利息费用", "context_name": "财务费用", "note": "财务费用明细，需父级上下文"},
+    {"report_type": "IS", "subject_code": "ISF006", "source_name": "利息收入", "context_name": "财务费用", "note": "财务费用明细，需父级上下文"},
+    {"report_type": "IS", "subject_code": "ISF006", "source_name": "财务费用-利息收入", "note": "解析器历史兼容名称"},
+    {"report_type": "CF", "subject_code": "CFO010", "source_name": "收到的其他与经营活动有关的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFO018", "source_name": "支付的其他与经营活动有关的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV001", "source_name": "收回投资所收到的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV003", "source_name": "处置固定资产、无形资产和其他长期资产所收回的现金净额", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV005", "source_name": "收到的其他与投资活动有关的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV007", "source_name": "购建固定资产、无形资产和其他长期资产所支付的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV008", "source_name": "投资所支付的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFIV010", "source_name": "支付的其他与投资活动有关的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFFN007", "source_name": "分配股利、利润或偿付利息所支付的现金", "note": "语序展示变体"},
+    {"report_type": "CF", "subject_code": "CFFN002", "source_name": "子公司吸收少数股东投资收到的现金", "note": "去除其中前缀"},
+    {"report_type": "CF", "subject_code": "CFFN008", "source_name": "子公司支付给少数股东的股利、利润", "note": "去除其中前缀"},
+    {"report_type": "CF", "subject_code": "CFT002", "source_name": "现金的期初余额", "note": "现金余额展示变体"},
+    {"report_type": "CF", "subject_code": "CFT003", "source_name": "现金的期末余额", "note": "现金余额展示变体"}
+  ],
+  "rejected": [
+    {"report_type": "BS", "source_name": "应收票据及应收账款", "reason": "合并披露项，不能自动写入应收账款单项"},
+    {"report_type": "BS", "source_name": "应付票据及应付账款", "reason": "合并披露项，不能自动写入应付账款单项"},
+    {"report_type": "BS", "source_name": "固定资产原值", "reason": "计量口径不同，不能自动写入固定资产净额"},
+    {"report_type": "BS", "source_name": "固定资产净值", "reason": "计量口径不同，不能自动写入固定资产净额"},
+    {"report_type": "BS", "source_name": "固定资产及清理合计", "reason": "计量口径不同，不能自动写入固定资产单项"},
+    {"report_type": "BS", "source_name": "工程物资", "reason": "独立会计科目，不能自动写入在建工程"},
+    {"report_type": "BS", "source_name": "可供出售金融资产", "reason": "准则口径不同，需明确标准科目后再映射"},
+    {"report_type": "BS", "source_name": "以公允价值计量且其变动计入其他综合收益的金融资产", "reason": "准则口径不同，需明确标准科目后再映射"},
+    {"report_type": "BS", "source_name": "以摊余成本计量的金融资产", "reason": "准则口径不同，需明确标准科目后再映射"}
+  ]
+}

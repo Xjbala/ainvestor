@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.persistence.db import engine, Base
-from backend.persistence.financial_models import AccountCategory, AccountSubject, FinancialSubjectMapping
+from backend.persistence.financial_models import AccountCategory, AccountSubject
 
 async def cleanup_tables():
     async with engine.begin() as conn:
@@ -14,8 +14,9 @@ async def cleanup_tables():
         await conn.execute(text("SET FOREIGN_KEY_CHECKS = 0"))
         
         tables = [
-            "financial_subject_mappings",
+            "financial_match_issues",
             "financial_data",
+            "account_subject_source_aliases",
             "account_subjects",
             "account_categories"
         ]

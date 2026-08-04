@@ -694,6 +694,121 @@
 }
 
 
+/* Final Investment Decision in Collaboration Flow */
+.investment-decision-summary {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 12px;
+}
+
+.investment-decision-heading {
+    color: #111827;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.investment-decision-row {
+    border-top: 1px solid #f3f4f6;
+    padding: 12px 0;
+}
+
+.investment-decision-row:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.investment-decision-row:last-child {
+    padding-bottom: 0;
+}
+
+.investment-decision-title {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.investment-decision-ticker {
+    color: #111827;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.investment-rating {
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 8px;
+}
+
+.investment-rating.is-bullish {
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.investment-rating.is-neutral {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+.investment-rating.is-bearish {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.investment-decision-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0 0 12px;
+}
+
+.investment-decision-grid div {
+    min-width: 0;
+}
+
+.investment-decision-grid dt,
+.investment-decision-detail > span,
+.investment-decision-risk > span {
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.investment-decision-grid dd {
+    color: #1f2937;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 3px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.investment-decision-detail,
+.investment-decision-risk {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+}
+
+.investment-decision-risk {
+    margin-top: 10px;
+}
+
+.investment-decision-detail p,
+.investment-decision-risk p {
+    color: #374151;
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 4px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.investment-decision-risk p {
+    color: #92400e;
+}
+
 /* Decision Footer */
 .decision-footer {
     position: fixed;
@@ -1076,6 +1191,7 @@
 }
 
 @media (max-width: 768px) {
+    .investment-decision-grid,
     .vmp-summary {
         grid-template-columns: 1fr;
     }

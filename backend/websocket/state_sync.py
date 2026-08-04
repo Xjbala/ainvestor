@@ -94,7 +94,7 @@ class WebSocketStateSync:
         await self.broadcast(message)
     
     async def on_agent_complete(self, agent_id: str, content: str):
-        """Agent分析完成"""
+        """广播 Agent 分析完成事件。"""
         logger.info(f"[on_agent_complete] Agent {agent_id} completed, content length: {len(content)}")
         
         message = create_agent_message(
@@ -105,24 +105,6 @@ class WebSocketStateSync:
         )
         await self.broadcast(message)
         logger.info(f"[on_agent_complete] Broadcasted message for {agent_id}")
-        
-        # Persist to database
-        if self._session_id:
-            try:
-                logger.info(f"[on_agent_complete] Saving to database: session_id={self._session_id}, agent_id={agent_id}")
-                db = await get_database()
-                await db.save_agent_output(
-                    session_id=self._session_id,
-                    agent_id=agent_id,
-                    agent_type="analyst", # Default type
-                    phase="analysis",
-                    content=content
-                )
-                logger.info(f"[on_agent_complete] Successfully saved output for {agent_id}")
-            except Exception as e:
-                logger.error(f"[on_agent_complete] Failed to save agent output: {e}", exc_info=True)
-        else:
-            logger.warning(f"[on_agent_complete] No session_id, skipping database save")
     
     async def on_agent_start(self, agent_id: str, phase: str = ""):
         """Agent开始分析"""

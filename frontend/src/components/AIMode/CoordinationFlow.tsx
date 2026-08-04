@@ -1,10 +1,15 @@
 import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+    extractInvestmentRecommendations,
+    type InvestmentRecommendation,
+} from '../../utils/metricExtraction';
 import './AIMode.css';
 
 export interface AgentMessage {
     id: string;
+    agentId: string;
     agentName: string;
     content: string;
     timestamp: string;
@@ -30,6 +35,73 @@ function cleanThinkingContent(content: string): string {
     cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
     return cleaned;
+}
+
+function formatTargetPrice(recommendation: InvestmentRecommendation): string {
+    const targetPrice = recommendation.target_price;
+    if (targetPrice !== null && targetPrice !== undefined && targetPrice !== '') {
+        const value = Number(targetPrice);
+        if (Number.isFinite(value)) return `¥${value.toFixed(2)}`;
+        return String(targetPrice);
+    }
+
+    const targetRange = recommendation.target_price_range?.trim();
+    if (targetRange && !/^(null|none)$/i.test(targetRange)) {
+        return targetRange;
+    }
+
+    return '—';
+}
+
+function getRatingClass(rating?: string): string {
+    if (/强烈推荐|推荐/.test(rating || '')) return 'is-bullish';
+    if (/谨慎|回避/.test(rating || '')) return 'is-bearish';
+    return 'is-neutral';
+}
+
+function InvestmentDecisionSummary({ recommendations }: { recommendations: InvestmentRecommendation[] }) {
+    return (
+        <section className="investment-decision-summary" aria-label="最终投资建议">
+            <div className="investment-decision-heading">最终投资建议</div>
+            {recommendations.map((recommendation, index) => (
+                <div
+                    className="investment-decision-row"
+                    key={`${recommendation.ticker || 'recommendation'}-${index}`}
+                >
+                    <div className="investment-decision-title">
+                        <span className="investment-decision-ticker">
+                            {recommendation.ticker || '未标注股票'}
+                        </span>
+                        <span className={`investment-rating ${getRatingClass(recommendation.rating)}`}>
+                            {recommendation.rating || '中性'}
+                        </span>
+                    </div>
+                    <dl className="investment-decision-grid">
+                        <div>
+                            <dt>目标价位</dt>
+                            <dd>{formatTargetPrice(recommendation)}</dd>
+                        </div>
+                        <div>
+                            <dt>持有期限</dt>
+                            <dd>{recommendation.holding_period || '—'}</dd>
+                        </div>
+                    </dl>
+                    {recommendation.core_logic && (
+                        <div className="investment-decision-detail">
+                            <span>核心逻辑</span>
+                            <p>{recommendation.core_logic}</p>
+                        </div>
+                    )}
+                    {recommendation.risk_warnings && (
+                        <div className="investment-decision-risk">
+                            <span>风险提示</span>
+                            <p>{recommendation.risk_warnings}</p>
+                        </div>
+                    )}
+                </div>
+            ))}
+        </section>
+    );
 }
 
 export function CoordinationFlow({ messages }: CoordinationFlowProps) {
@@ -100,6 +172,9 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
                     const isExpanded = expandedIds.has(msg.id);
                     const needsTruncation = shouldTruncate(cleanedContent);
                     const displayContent = isExpanded || !needsTruncation ? cleanedContent : truncateContent(cleanedContent);
+                    const recommendations = msg.agentId === 'portfolio_manager'
+                        ? extractInvestmentRecommendations(cleanedContent)
+                        : null;
 
                     return (
                         <div key={msg.id} className="timeline-item">
@@ -117,17 +192,23 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
                                     </div>
                                     <span className="time-stamp">{msg.timestamp}</span>
                                 </div>
-                                <div className={`message-body agent-markdown ${!isExpanded && needsTruncation ? 'is-truncated' : ''}`}>
-                                    {msg.type === 'warning' && <strong>⚠️ 警告：</strong>}
-                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
-                                </div>
-                                {needsTruncation && (
-                                    <button
-                                        className="expand-toggle-btn"
-                                        onClick={() => toggleExpand(msg.id)}
-                                    >
-                                        {isExpanded ? '收起 ↑' : '展开全文 ↓'}
-                                    </button>
+                                {recommendations ? (
+                                    <InvestmentDecisionSummary recommendations={recommendations} />
+                                ) : (
+                                    <>
+                                        <div className={`message-body agent-markdown ${!isExpanded && needsTruncation ? 'is-truncated' : ''}`}>
+                                            {msg.type === 'warning' && <strong>⚠️ 警告：</strong>}
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayContent}</ReactMarkdown>
+                                        </div>
+                                        {needsTruncation && (
+                                            <button
+                                                className="expand-toggle-btn"
+                                                onClick={() => toggleExpand(msg.id)}
+                                            >
+                                                {isExpanded ? '收起 ↑' : '展开全文 ↓'}
+                                            </button>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>

@@ -10,10 +10,38 @@ from .solvency import SolvencyAnalysisService
 from .profitability import ProfitabilityAnalysisService
 from .growth import GrowthAnalysisService
 from .operating import OperatingAnalysisService
+from .financial_validation import (
+    CORE_SUBJECTS,
+    ValidationStatus,
+    validate_period,
+    summarize_periods,
+    is_year_complete_for_resume,
+    required_core_codes,
+    evaluate_cell_completeness,
+    build_coverage_matrix,
+)
+from .coverage_service import (
+    scan_coverage,
+    scan_and_save,
+    get_latest_snapshot,
+    refresh_coverage_after_repair,
+)
 
 __all__ = [
     "SolvencyAnalysisService",
     "ProfitabilityAnalysisService",
     "GrowthAnalysisService",
     "OperatingAnalysisService",
+    "CORE_SUBJECTS",
+    "ValidationStatus",
+    "validate_period",
+    "summarize_periods",
+    "is_year_complete_for_resume",
+    "required_core_codes",
+    "evaluate_cell_completeness",
+    "build_coverage_matrix",
+    "scan_coverage",
+    "scan_and_save",
+    "get_latest_snapshot",
+    "refresh_coverage_after_repair",
 ]

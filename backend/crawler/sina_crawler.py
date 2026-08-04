@@ -16,12 +16,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from .base import CrawlerService, parse_decimal
+from .subject_matching import SinaSubjectMatcher
 from ..persistence.db import async_session_factory
 from ..persistence.financial_models import (
     Company,
     AccountSubject,
-    FinancialSubjectMapping,
+    AccountSubjectSourceAlias,
     FinancialData,
+    FinancialMatchIssue,
     ReportType,
     ReportPeriod,
     Exchange,
@@ -34,283 +36,6 @@ logger = logging.getLogger(__name__)
 # 新浪财经 JSON API 地址
 SINA_JSON_API_URL = "https://quotes.sina.cn/cn/api/openapi.php/CompanyFinanceService.getFinanceReport2022"
 
-# 新浪科目名 -> 标准科目编码（现有编码体系下的别名表）
-# 优先于模糊匹配，避免“利息收入/其他综合收益”等被错误归并。
-SINA_SUBJECT_ALIASES: Dict[str, Dict[str, str]] = {
-    "BS": {
-        "货币资金": "BSA001",
-        "结算备付金": "BSA002",
-        "拆出资金": "BSA003",
-        "交易性金融资产": "BSA004",
-        "衍生金融资产": "BSA005",
-        "应收票据": "BSA006",
-        "应收账款": "BSA007",
-        "应收票据及应收账款": "BSA007",
-        "应收款项融资": "BSA008",
-        "预付款项": "BSA009",
-        "应收保费": "BSA010",
-        "应收分保账款": "BSA011",
-        "应收分保合同准备金": "BSA012",
-        "其他应收款": "BSA013",
-        "其他应收款(合计)": "BSA013",
-        "其他应收款合计": "BSA013",
-        "买入返售金融资产": "BSA014",
-        "存货": "BSA015",
-        "合同资产": "BSA016",
-        "持有待售资产": "BSA017",
-        "划分为持有待售的资产": "BSA017",
-        "一年内到期的非流动资产": "BSA018",
-        "其他流动资产": "BSA019",
-        "流动资产合计": "BSA020",
-        "应收股利": "BSA021",
-        "应收利息": "BSA022",
-        "发放贷款和垫款": "BSA101",
-        "发放贷款及垫款": "BSA101",
-        "债权投资": "BSA102",
-        "其他债权投资": "BSA103",
-        "可供出售金融资产": "BSA106",
-        "以公允价值计量且其变动计入其他综合收益的金融资产": "BSA106",
-        "以摊余成本计量的金融资产": "BSA102",
-        "长期应收款": "BSA104",
-        "长期股权投资": "BSA105",
-        "其他权益工具投资": "BSA106",
-        "其他非流动金融资产": "BSA107",
-        "投资性房地产": "BSA108",
-        "固定资产": "BSA109",
-        "固定资产净额": "BSA109",
-        "固定资产净值": "BSA109",
-        "固定资产及清理合计": "BSA109",
-        "固定资产原值": "BSA109",
-        "在建工程": "BSA110",
-        "在建工程合计": "BSA110",
-        "工程物资": "BSA110",
-        "生产性生物资产": "BSA111",
-        "油气资产": "BSA112",
-        "使用权资产": "BSA113",
-        "无形资产": "BSA114",
-        "开发支出": "BSA115",
-        "商誉": "BSA116",
-        "长期待摊费用": "BSA117",
-        "递延所得税资产": "BSA118",
-        "其他非流动资产": "BSA119",
-        "非流动资产合计": "BSA120",
-        "资产总计": "BSA121",
-        "短期借款": "BSL001",
-        "向中央银行借款": "BSL002",
-        "拆入资金": "BSL003",
-        "交易性金融负债": "BSL004",
-        "衍生金融负债": "BSL005",
-        "应付票据": "BSL006",
-        "应付账款": "BSL007",
-        "应付票据及应付账款": "BSL007",
-        "预收款项": "BSL008",
-        "合同负债": "BSL009",
-        "卖出回购金融资产款": "BSL010",
-        "吸收存款及同业存放": "BSL011",
-        "代理买卖证券款": "BSL012",
-        "代理承销证券款": "BSL013",
-        "应付职工薪酬": "BSL014",
-        "应交税费": "BSL015",
-        "其他应付款": "BSL016",
-        "其他应付款合计": "BSL016",
-        "应付手续费及佣金": "BSL017",
-        "应付分保账款": "BSL018",
-        "持有待售负债": "BSL019",
-        "划分为持有待售的负债": "BSL019",
-        "一年内到期的非流动负债": "BSL020",
-        "其他流动负债": "BSL021",
-        "流动负债合计": "BSL022",
-        "应付股利": "BSL023",
-        "应付利息": "BSL024",
-        "保险合同准备金": "BSL101",
-        "长期借款": "BSL102",
-        "应付债券": "BSL103",
-        "租赁负债": "BSL104",
-        "长期应付款": "BSL105",
-        "长期应付款合计": "BSL105",
-        "专项应付款": "BSL105",
-        "长期应付职工薪酬": "BSL106",
-        "预计负债": "BSL107",
-        "预计非流动负债": "BSL107",
-        "预计流动负债": "BSL107",
-        "递延收益": "BSL108",
-        "长期递延收益": "BSL108",
-        "一年内的递延收益": "BSL108",
-        "递延所得税负债": "BSL109",
-        "其他非流动负债": "BSL110",
-        "非流动负债合计": "BSL111",
-        "负债合计": "BSL112",
-        "实收资本（或股本）": "BSE001",
-        "实收资本(或股本)": "BSE001",
-        "其他权益工具": "BSE002",
-        "永续债": "BSE002",
-        "优先股": "BSE002",
-        "资本公积": "BSE003",
-        "库存股": "BSE004",
-        "减:库存股": "BSE004",
-        "减：库存股": "BSE004",
-        "其他综合收益": "BSE005",
-        "专项储备": "BSE006",
-        "盈余公积": "BSE007",
-        "一般风险准备": "BSE008",
-        "未分配利润": "BSE009",
-        "归属于母公司所有者权益合计": "BSE010",
-        "归属于母公司股东权益合计": "BSE010",
-        "归属于母公司股东的权益": "BSE010",
-        "少数股东权益": "BSE011",
-        "所有者权益（或股东权益）合计": "BSE012",
-        "所有者权益(或股东权益)合计": "BSE012",
-        "负债和所有者权益（或股东权益）总计": "BSE013",
-        "负债和所有者权益(或股东权益)总计": "BSE013",
-        "负债及股东权益总计": "BSE013",
-    },
-    "IS": {
-        "营业收入": "ISI001",
-        "利息收入": "ISI002",
-        "已赚保费": "ISI003",
-        "手续费及佣金收入": "ISI004",
-        "营业总收入": "ISI005",
-        "营业成本": "ISC001",
-        "利息支出": "ISC002",
-        "手续费及佣金支出": "ISC003",
-        "退保金": "ISC004",
-        "赔付支出净额": "ISC005",
-        "提取保险合同准备金净额": "ISC006",
-        "保单红利支出": "ISC007",
-        "分保费用": "ISC008",
-        "营业税金及附加": "ISC009",
-        "税金及附加": "ISC009",
-        "营业总成本": "ISC010",
-        "销售费用": "ISF001",
-        "管理费用": "ISF002",
-        "业务及管理费用": "ISF002",
-        "研发费用": "ISF003",
-        "财务费用": "ISF004",
-        "其中：利息费用": "ISF005",
-        "利息费用": "ISF005",
-        "财务费用-利息费用": "ISF005",
-        "财务费用-利息收入": "ISF006",
-        # 财务费用明细里的利息收入（由 _disambiguate_subject_name 改写）
-        "其他收益": "ISF007",
-        "加：其他收益": "ISF007",
-        "投资收益": "ISF008",
-        "投资收益（损失以“-”号填列）": "ISF008",
-        "对联营企业和合营企业的投资收益": "ISF009",
-        "其中：对联营企业和合营企业的投资收益": "ISF009",
-        "以摊余成本计量的金融资产终止确认产生的收益": "ISF010",
-        "以摊余成本计量的金融资产终止确认收益（损失）": "ISF010",
-        "汇兑收益": "ISF011",
-        "汇兑收益（损失以“-”号填列）": "ISF011",
-        "净敞口套期收益": "ISF012",
-        "公允价值变动收益": "ISF013",
-        "公允价值变动收益（损失以“-”号填列）": "ISF013",
-        "信用减值损失": "ISF014",
-        "信用减值损失（转回以“-”号填列）": "ISF014",
-        "资产处置收益": "ISF015",
-        "资产处置收益（损失以“-”号填列）": "ISF015",
-        "营业利润": "ISF016",
-        "营业利润（亏损以“-”号填列）": "ISF016",
-        "营业外收入": "ISF017",
-        "加：营业外收入": "ISF017",
-        "营业外支出": "ISF018",
-        "减：营业外支出": "ISF018",
-        "利润总额": "ISF019",
-        "利润总额（亏损总额以“-”号填列）": "ISF019",
-        "所得税费用": "ISF020",
-        "减：所得税费用": "ISF020",
-        "净利润": "ISF021",
-        "净利润（净亏损以“-”号填列）": "ISF021",
-        "持续经营净利润": "ISF023",
-        "1.持续经营净利润（净亏损以“-”号填列）": "ISF023",
-        "终止经营净利润": "ISF024",
-        "2.终止经营净利润（净亏损以“-”号填列）": "ISF024",
-        "归属于母公司所有者的净利润": "ISF026",
-        "1.归属于母公司所有者的净利润（净亏损以-号填列）": "ISF026",
-        "少数股东损益": "ISF027",
-        "2.少数股东损益": "ISF027",
-        "资产减值损失": "ISF028",
-        "资产减值损失（转回以“-”号填列）": "ISF028",
-        "其他综合收益": "ISO001",
-        "归属于母公司所有者的其他综合收益": "ISO002",
-        "归属母公司所有者的其他综合收益": "ISO002",
-        "归属于少数股东的其他综合收益": "ISO003",
-        "少数股东其他综合收益": "ISO003",
-        "综合收益总额": "ISO004",
-        "归属于母公司所有者的综合收益总额": "ISO005",
-        "归属于少数股东的综合收益总额": "ISO006",
-        "基本每股收益": "ISE001",
-        "（一）基本每股收益": "ISE001",
-        "稀释每股收益": "ISE002",
-        "（二）稀释每股收益": "ISE002",
-    },
-    "CF": {
-        "销售商品、提供劳务收到的现金": "CFO001",
-        "客户存款和同业存放款项净增加额": "CFO002",
-        "向中央银行借款净增加额": "CFO003",
-        "向其他金融机构拆入资金净增加额": "CFO004",
-        "收取利息、手续费及佣金的现金": "CFO005",
-        "拆入资金净增加额": "CFO006",
-        "回购业务资金净增加额": "CFO007",
-        "代理买卖证券收到的现金净额": "CFO008",
-        "收到的税费返还": "CFO009",
-        "收到其他与经营活动有关的现金": "CFO010",
-        "收到的其他与经营活动有关的现金": "CFO010",
-        "经营活动现金流入小计": "CFO011",
-        "购买商品、接受劳务支付的现金": "CFO012",
-        "客户贷款及垫款净增加额": "CFO013",
-        "存放中央银行和同业款项净增加额": "CFO014",
-        "支付利息、手续费及佣金的现金": "CFO015",
-        "支付给职工以及为职工支付的现金": "CFO016",
-        "支付的各项税费": "CFO017",
-        "支付其他与经营活动有关的现金": "CFO018",
-        "支付的其他与经营活动有关的现金": "CFO018",
-        "经营活动现金流出小计": "CFO019",
-        "经营活动产生的现金流量净额": "CFO020",
-        "收回投资收到的现金": "CFIV001",
-        "收回投资所收到的现金": "CFIV001",
-        "取得投资收益收到的现金": "CFIV002",
-        "处置固定资产、无形资产和其他长期资产收回的现金净额": "CFIV003",
-        "处置固定资产、无形资产和其他长期资产所收回的现金净额": "CFIV003",
-        "处置子公司及其他营业单位收到的现金净额": "CFIV004",
-        "收到其他与投资活动有关的现金": "CFIV005",
-        "收到的其他与投资活动有关的现金": "CFIV005",
-        "投资活动现金流入小计": "CFIV006",
-        "购建固定资产、无形资产和其他长期资产支付的现金": "CFIV007",
-        "购建固定资产、无形资产和其他长期资产所支付的现金": "CFIV007",
-        "投资支付的现金": "CFIV008",
-        "投资所支付的现金": "CFIV008",
-        "取得子公司及其他营业单位支付的现金净额": "CFIV009",
-        "支付其他与投资活动有关的现金": "CFIV010",
-        "支付的其他与投资活动有关的现金": "CFIV010",
-        "投资活动现金流出小计": "CFIV011",
-        "投资活动产生的现金流量净额": "CFIV012",
-        "吸收投资收到的现金": "CFFN001",
-        "其中：子公司吸收少数股东投资收到的现金": "CFFN002",
-        "子公司吸收少数股东投资收到的现金": "CFFN002",
-        "取得借款收到的现金": "CFFN003",
-        "发行债券收到的现金": "CFFN003",
-        "收到其他与筹资活动有关的现金": "CFFN004",
-        "筹资活动现金流入小计": "CFFN005",
-        "偿还债务支付的现金": "CFFN006",
-        "分配股利、利润或偿付利息支付的现金": "CFFN007",
-        "分配股利、利润或偿付利息所支付的现金": "CFFN007",
-        "其中：子公司支付给少数股东的股利、利润": "CFFN008",
-        "子公司支付给少数股东的股利、利润": "CFFN008",
-        "支付其他与筹资活动有关的现金": "CFFN009",
-        "筹资活动现金流出小计": "CFFN010",
-        "筹资活动产生的现金流量净额": "CFFN011",
-        "现金及现金等价物净增加额": "CFT001",
-        "加：期初现金及现金等价物余额": "CFT002",
-        "期初现金及现金等价物余额": "CFT002",
-        "现金的期初余额": "CFT002",
-        "现金等价物的期初余额": "CFT002",
-        "期末现金及现金等价物余额": "CFT003",
-        "现金的期末余额": "CFT003",
-        "现金等价物的期末余额": "CFT003",
-        "汇率变动对现金及现金等价物的影响": "CFX001",
-    },
-}
-
 # 分区标题 / 纯结构行，不落库
 _SECTION_TITLES = {
     "流动资产",
@@ -322,36 +47,6 @@ _SECTION_TITLES = {
     "投资活动产生的现金流量",
     "筹资活动产生的现金流量",
 }
-
-
-def _normalize_subject_name(name: str) -> str:
-    """标准化科目名称，便于跨源匹配。"""
-    if not name:
-        return ""
-    text = str(name).strip()
-    table = str.maketrans({
-        "（": "(",
-        "）": ")",
-        "：": ":",
-        "，": ",",
-        "；": ";",
-        "－": "-",
-        "—": "-",
-        "–": "-",
-        "　": " ",
-        "＋": "+",
-        "＋": "+",
-    })
-    text = text.translate(table)
-    text = re.sub(r"\s+", "", text)
-    # 去掉常见填列说明
-    text = re.sub(r"[（(][^）)]*[损失亏损转回填列][^）)]*[）)]", "", text)
-    text = text.replace("加:", "").replace("减:", "").replace("其中:", "")
-    text = text.replace("加：", "").replace("减：", "").replace("其中：", "")
-    # 去掉序号前缀：1. / （一） / 1、
-    text = re.sub(r"^[0-9]+[\.、]", "", text)
-    text = re.sub(r"^[（(][一二三四五六七八九十0-9]+[）)]", "", text)
-    return text
 
 
 class SinaCrawlerService(CrawlerService):
@@ -385,14 +80,9 @@ class SinaCrawlerService(CrawlerService):
 
     def __init__(self, session, **kwargs):
         super().__init__(session, data_source_code="sina", **kwargs)
-        # 科目匹配缓存：避免每个科目都打库
         self._subject_cache_loaded = False
-        self._subjects_by_rt: Dict[str, List[AccountSubject]] = {}
-        self._subjects_by_code: Dict[str, AccountSubject] = {}
-        self._name_index: Dict[str, Dict[str, AccountSubject]] = {}
-        self._norm_index: Dict[str, Dict[str, AccountSubject]] = {}
-        self._mapping_by_name: Dict[str, AccountSubject] = {}
-        self._unmatched_names: Dict[str, set] = {"BS": set(), "IS": set(), "CF": set()}
+        self._subject_cache_lock = asyncio.Lock()
+        self._subject_matcher: Optional[SinaSubjectMatcher] = None
 
     async def crawl_company_list(self) -> List[Dict[str, Any]]:
         """
@@ -672,16 +362,19 @@ class SinaCrawlerService(CrawlerService):
                     ):
                         last_major = subject_name
 
-                    resolved_name = self._disambiguate_subject_name(
-                        subject_name, report_type, last_major, dt_int
-                    )
+                    source_context_name = last_major
+                    # 新浪现金流总额行(display_type=7)不属于上一个主科目。
+                    if report_type == "CF" and dt_int == 7:
+                        source_context_name = subject_name
+
                     parsed_val = self._parse_financial_value(
                         None if item_val is None else str(item_val)
                     )
                     if parsed_val is not None:
                         financial_data_list.append({
                             "stock_code": stock_code,
-                            "subject_name": resolved_name,
+                            "subject_name": subject_name,
+                            "source_context_name": source_context_name,
                             "report_date": report_date_str,
                             "report_type": report_type,
                             "value": parsed_val,
@@ -716,9 +409,11 @@ class SinaCrawlerService(CrawlerService):
                         financial_data_list.append({
                             "stock_code": stock_code,
                             "subject_name": subject_name,
+                            "source_context_name": "",
                             "report_date": report_date_str,
                             "report_type": report_type,
                             "value": parsed_val,
+                            "raw_subject_name": subject_name,
                         })
             periods = list(report_dates)
             if year:
@@ -737,179 +432,258 @@ class SinaCrawlerService(CrawlerService):
         except Exception:
             return None
 
-    @staticmethod
-    def _disambiguate_subject_name(
-        subject_name: str,
-        report_type: str,
-        last_major: str,
-        display_type: int,
-    ) -> str:
-        """
-        根据上下文消解同名科目。
-
-        典型场景：利润表中「利息收入」既可能是金融企业营业收入明细(ISI002)，
-        也可能是财务费用下的利息收入明细(ISF006)。
-        """
-        if report_type != "IS":
-            return subject_name
-
-        if subject_name == "利息收入":
-            # 仅当处于财务费用段落时，记为财务费用明细
-            if "财务费用" in (last_major or ""):
-                return "财务费用-利息收入"
-            return "利息收入"
-
-        if subject_name in ("利息费用", "其中：利息费用"):
-            return "利息费用"
-
-        return subject_name
-
-    async def save_to_db(self, financial_data_list: List[Dict[str, Any]]):
-        """保存财务数据到数据库（批量 upsert，避免逐行查询）。"""
+    async def save_to_db(
+        self,
+        financial_data_list: List[Dict[str, Any]],
+        crawl_task_id: Optional[str] = None,
+    ) -> Dict[str, int]:
+        """保存财务数据，并返回标准科目匹配质量汇总。"""
         if not financial_data_list:
-            return
+            return self._empty_save_summary()
 
-        # 优先复用爬虫自身 session，避免长任务后新建连接触发连接池兼容问题
-        owns_session = False
-        session = getattr(self, "session", None)
-        if session is None:
-            session = async_session_factory()
-            owns_session = True
+        # 批量采集并发运行时不能复用引擎会话；每次落库使用独立会话。
+        async with async_session_factory() as session:
+            return await self._persist_financial_data(
+                session, financial_data_list, crawl_task_id=crawl_task_id
+            )
 
-        try:
-            await self._persist_financial_data(session, financial_data_list)
-        finally:
-            if owns_session:
-                await session.close()
+    @staticmethod
+    def _empty_save_summary() -> Dict[str, int]:
+        return {
+            "input_rows": 0,
+            "matched_rows": 0,
+            "inserted_rows": 0,
+            "updated_rows": 0,
+            "unmatched_rows": 0,
+            "ambiguous_rows": 0,
+            "rejected_rows": 0,
+            "conflict_rows": 0,
+        }
 
     async def _persist_financial_data(
         self,
         session,
         financial_data_list: List[Dict[str, Any]],
-    ) -> None:
-        """在指定 session 上执行财务数据落库。"""
+        crawl_task_id: Optional[str] = None,
+    ) -> Dict[str, int]:
+        """在独立 session 上执行财务数据落库和匹配问题审计。"""
+        summary = self._empty_save_summary()
+        summary["input_rows"] = len(financial_data_list)
         stock_code = financial_data_list[0]["stock_code"]
 
-        stmt = select(Company).where(Company.stock_code == stock_code)
-        result = await session.execute(stmt)
-        company = result.scalar_one_or_none()
-
+        company = (
+            await session.execute(
+                select(Company).where(Company.stock_code == stock_code)
+            )
+        ).scalar_one_or_none()
         if not company:
-            logger.warning(f"Company {stock_code} not found in DB")
-            return
+            logger.warning("Company %s not found in DB", stock_code)
+            return summary
 
         await self._ensure_subject_cache(session)
+        if self._subject_matcher is None:
+            raise RuntimeError("Sina standard subject cache was not initialized")
 
-        # 去重：(report_date, subject_id) -> item
-        processed_items: Dict[Tuple[date, int], Dict[str, Any]] = {}
-        matched_count = 0
-        unmatched_count = 0
-        report_dates_seen = set()
+        processed_items: Dict[Tuple[date, int, str], Dict[str, Any]] = {}
+        issue_specs: List[Dict[str, Any]] = []
+        report_dates_seen: set[date] = set()
 
         for data in financial_data_list:
-            subject_name = data["subject_name"]
-            report_type = data["report_type"]
+            subject_name = str(data.get("subject_name") or "")
+            report_type = str(data.get("report_type") or "").upper()
+            context_name = str(data.get("source_context_name") or "")
             report_date = date.fromisoformat(data["report_date"])
             display_type = data.get("display_type")
+            match = self._subject_matcher.match(subject_name, report_type, context_name)
 
-            subject, match_rank = self._match_subject_cached(subject_name, report_type)
-            if not subject:
-                unmatched_count += 1
+            if not match.matched:
+                issue_specs.append({
+                    "report_date": report_date,
+                    "report_type": report_type,
+                    "raw_subject_name": str(data.get("raw_subject_name") or subject_name),
+                    "context_name": context_name,
+                    "raw_value": data.get("value"),
+                    "issue_type": match.issue_type or "unmatched",
+                    "candidate_subject_codes": list(match.candidate_subject_codes) or None,
+                    "detail": match.detail,
+                })
+                summary[f"{match.issue_type or 'unmatched'}_rows"] = (
+                    summary.get(f"{match.issue_type or 'unmatched'}_rows", 0) + 1
+                )
                 continue
 
-            matched_count += 1
+            subject = match.subject
+            summary["matched_rows"] += 1
             report_dates_seen.add(report_date)
-            key = (report_date, subject.id)
-            quality = self._match_quality(subject_name, subject, display_type, match_rank)
-            if key in processed_items:
-                prev = processed_items[key]
-                if quality < prev["quality"]:
-                    processed_items[key] = {
-                        "data": data,
-                        "subject": subject,
-                        "match_rank": match_rank,
-                        "quality": quality,
-                    }
-                continue
-
-            processed_items[key] = {
+            key = (report_date, subject.id, report_type)
+            quality = self._match_quality(match.method or "", display_type)
+            candidate = {
                 "data": data,
                 "subject": subject,
-                "match_rank": match_rank,
+                "match_method": match.method,
                 "quality": quality,
             }
+            existing_candidate = processed_items.get(key)
+            if existing_candidate is None:
+                processed_items[key] = candidate
+                continue
 
+            previous_value = existing_candidate["data"].get("value")
+            current_value = data.get("value")
+            if previous_value != current_value:
+                issue_specs.append({
+                    "report_date": report_date,
+                    "report_type": report_type,
+                    "raw_subject_name": str(data.get("raw_subject_name") or subject_name),
+                    "context_name": context_name,
+                    "raw_value": current_value,
+                    "issue_type": "conflict",
+                    "candidate_subject_codes": [subject.code],
+                    "detail": (
+                        f"同报告期标准科目 {subject.code} 存在不同来源数值: "
+                        f"{previous_value} / {current_value}"
+                    ),
+                })
+                summary["conflict_rows"] += 1
+            if quality < existing_candidate["quality"]:
+                processed_items[key] = candidate
+
+        await self._record_match_issues(
+            session, stock_code, issue_specs, crawl_task_id=crawl_task_id
+        )
         if not processed_items:
+            await session.commit()
             logger.warning(
-                f"No matched subjects to save for {stock_code} "
-                f"(unmatched_rows={unmatched_count})"
+                "No safe subject matches for %s (input=%s unmatched=%s ambiguous=%s rejected=%s)",
+                stock_code,
+                summary["input_rows"],
+                summary["unmatched_rows"],
+                summary["ambiguous_rows"],
+                summary["rejected_rows"],
             )
-            return
+            return summary
 
-        # 预加载已有记录，避免 N+1
         existing_map: Dict[Tuple[date, int, str], FinancialData] = {}
         date_list = sorted(report_dates_seen)
-        batch_size = 40
-        for i in range(0, len(date_list), batch_size):
-            batch_dates = date_list[i: i + batch_size]
-            stmt = select(FinancialData).where(
-                FinancialData.company_code == stock_code,
-                FinancialData.report_date.in_(batch_dates),
-            )
-            res = await session.execute(stmt)
-            for row in res.scalars().all():
-                rt_val = (
-                    row.report_type.value
-                    if hasattr(row.report_type, "value")
-                    else str(row.report_type)
+        for offset in range(0, len(date_list), 40):
+            batch_dates = date_list[offset: offset + 40]
+            rows = (
+                await session.execute(
+                    select(FinancialData).where(
+                        FinancialData.company_code == stock_code,
+                        FinancialData.report_date.in_(batch_dates),
+                    )
                 )
-                existing_map[(row.report_date, row.subject_id, rt_val)] = row
+            ).scalars().all()
+            for row in rows:
+                report_type = str(getattr(row.report_type, "value", row.report_type))
+                existing_map[(row.report_date, row.subject_id, report_type)] = row
 
-        updated = 0
-        inserted = 0
-        for key, item in processed_items.items():
-            report_date, subject_id = key
+        for (report_date, subject_id, report_type), item in processed_items.items():
             data = item["data"]
             subject = item["subject"]
-            rt = data["report_type"]
-            report_period = self._get_report_period(report_date)
-            ek = (report_date, subject_id, rt)
-            existing = existing_map.get(ek)
-
+            existing = existing_map.get((report_date, subject_id, report_type))
+            values = {
+                "subject_code": subject.code,
+                "report_period": self._get_report_period(report_date),
+                "value_decimal": data["value"],
+                "data_source": "sina",
+                "crawl_task_id": crawl_task_id,
+                "source_subject_name": str(data.get("raw_subject_name") or data["subject_name"]),
+                "source_context_name": str(data.get("source_context_name") or "") or None,
+                "subject_match_method": item["match_method"],
+            }
             if existing:
-                existing.value_decimal = data["value"]
-                existing.subject_code = subject.code
-                existing.report_period = report_period
-                existing.data_source = "sina"
-                updated += 1
+                for field, value in values.items():
+                    setattr(existing, field, value)
+                summary["updated_rows"] += 1
             else:
                 session.add(
                     FinancialData(
                         company_code=stock_code,
                         subject_id=subject_id,
-                        subject_code=subject.code,
                         report_date=report_date,
-                        report_type=ReportType(rt),
-                        report_period=report_period,
-                        value_decimal=data["value"],
-                        data_source="sina",
+                        report_type=ReportType(report_type),
+                        **values,
                     )
                 )
-                inserted += 1
+                summary["inserted_rows"] += 1
 
         await session.commit()
         logger.info(
-            f"Saved {len(processed_items)} unique items for {stock_code} "
-            f"(inserted={inserted}, updated={updated}, "
-            f"matched_rows={matched_count}, unmatched_rows={unmatched_count})"
+            "[Sina] %s match summary: input=%s matched=%s inserted=%s updated=%s "
+            "unmatched=%s ambiguous=%s rejected=%s conflict=%s",
+            stock_code,
+            summary["input_rows"],
+            summary["matched_rows"],
+            summary["inserted_rows"],
+            summary["updated_rows"],
+            summary["unmatched_rows"],
+            summary["ambiguous_rows"],
+            summary["rejected_rows"],
+            summary["conflict_rows"],
         )
-        for rt, names in self._unmatched_names.items():
-            if names:
-                sample = sorted(names)[:12]
-                logger.warning(
-                    f"[Sina] 未匹配科目 {stock_code} {rt}: "
-                    f"共{len(names)}个, 示例={sample}"
+        return summary
+
+    async def _record_match_issues(
+        self,
+        session,
+        stock_code: str,
+        issue_specs: List[Dict[str, Any]],
+        crawl_task_id: Optional[str],
+    ) -> None:
+        """按问题唯一键累计出现次数，保留首次与最近发现时间。"""
+        grouped_specs: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+        for spec in issue_specs:
+            key = (
+                spec["report_date"],
+                spec["report_type"],
+                spec["raw_subject_name"],
+                spec["context_name"],
+                spec["issue_type"],
+            )
+            if key not in grouped_specs:
+                grouped_specs[key] = {**spec, "count": 1}
+            else:
+                grouped_specs[key]["count"] += 1
+
+        for spec in grouped_specs.values():
+            existing = (
+                await session.execute(
+                    select(FinancialMatchIssue).where(
+                        FinancialMatchIssue.company_code == stock_code,
+                        FinancialMatchIssue.report_date == spec["report_date"],
+                        FinancialMatchIssue.report_type == ReportType(spec["report_type"]),
+                        FinancialMatchIssue.source == "sina",
+                        FinancialMatchIssue.raw_subject_name == spec["raw_subject_name"],
+                        FinancialMatchIssue.context_name == spec["context_name"],
+                        FinancialMatchIssue.issue_type == spec["issue_type"],
+                    )
                 )
+            ).scalar_one_or_none()
+            if existing:
+                existing.occurrence_count += spec["count"]
+                existing.raw_value = spec["raw_value"]
+                existing.candidate_subject_codes = spec["candidate_subject_codes"]
+                existing.detail = spec["detail"]
+                existing.crawl_task_id = crawl_task_id
+                continue
+            session.add(
+                FinancialMatchIssue(
+                    company_code=stock_code,
+                    report_date=spec["report_date"],
+                    report_type=ReportType(spec["report_type"]),
+                    source="sina",
+                    raw_subject_name=spec["raw_subject_name"],
+                    context_name=spec["context_name"],
+                    raw_value=spec["raw_value"],
+                    issue_type=spec["issue_type"],
+                    candidate_subject_codes=spec["candidate_subject_codes"],
+                    detail=spec["detail"],
+                    crawl_task_id=crawl_task_id,
+                    occurrence_count=spec["count"],
+                )
+            )
 
     @staticmethod
     def _display_priority(display_type: Any) -> int:
@@ -918,7 +692,6 @@ class SinaCrawlerService(CrawlerService):
             dt = int(display_type) if display_type is not None else 99
         except (TypeError, ValueError):
             return 99
-        # 汇总/主行优先
         if dt in (6, 7):
             return 1
         if dt == 2:
@@ -929,182 +702,66 @@ class SinaCrawlerService(CrawlerService):
             return 5
         return 4
 
-    def _match_quality(
-        self,
-        subject_name: str,
-        subject: AccountSubject,
-        display_type: Any,
-        match_rank: int,
-    ) -> tuple:
-        """
-        冲突消解质量分，越小越好。
-        优先：精确标准名 > 含“合计/净额”的主行 > 别名命中 > display_type。
-        """
-        name = (subject_name or "").strip()
-        exact = 0 if name == subject.name else 1
-        sina_exact = 0 if subject.sina_name and name == subject.sina_name else 1
-        # 合并行/合计行优先于“原值/净值/清理”等明细别名
-        summary_bonus = 0
-        if any(k in name for k in ("合计", "净额", "总计", "总额")):
-            summary_bonus = 0
-        elif any(k in name for k in ("原值", "清理", "减值准备", "累计折旧", "及")):
-            summary_bonus = 2
-        else:
-            summary_bonus = 1
-        return (
-            match_rank,
-            exact,
-            sina_exact,
-            summary_bonus,
-            self._display_priority(display_type),
-        )
+    def _match_quality(self, match_method: str, display_type: Any) -> tuple:
+        """同一标准科目重复行时，按确定性匹配级别再比较展示层级。"""
+        rank = {
+            "context_alias_exact": 0,
+            "name_exact": 1,
+            "sina_name_exact": 2,
+            "source_alias_exact": 3,
+            "normalized_exact": 4,
+        }.get(match_method, 99)
+        return rank, self._display_priority(display_type)
 
     def _get_report_period(self, report_date: date) -> ReportPeriod:
         """根据报告日期确定报告期间"""
         month = report_date.month
         if month == 3:
             return ReportPeriod.Q1
-        elif month == 6:
+        if month == 6:
             return ReportPeriod.SEMI_ANNUAL
-        elif month == 9:
+        if month == 9:
             return ReportPeriod.Q3
-        else:
-            return ReportPeriod.ANNUAL
+        return ReportPeriod.ANNUAL
 
     async def _ensure_subject_cache(self, session) -> None:
-        """加载科目与映射到内存索引，供匹配复用。"""
+        """从标准科目表和审核后的来源别名加载只读匹配缓存。"""
         if self._subject_cache_loaded:
             return
-
-        result = await session.execute(select(AccountSubject))
-        subjects = result.scalars().all()
-        self._subjects_by_rt = {"BS": [], "IS": [], "CF": []}
-        self._subjects_by_code = {}
-        self._name_index = {"BS": {}, "IS": {}, "CF": {}}
-        self._norm_index = {"BS": {}, "IS": {}, "CF": {}}
-
-        for subject in subjects:
-            rt = (
-                subject.report_type.value
-                if hasattr(subject.report_type, "value")
-                else str(subject.report_type)
-            )
-            if rt not in self._subjects_by_rt:
-                self._subjects_by_rt[rt] = []
-            self._subjects_by_rt[rt].append(subject)
-            self._subjects_by_code[subject.code] = subject
-
-            if rt not in self._name_index:
-                self._name_index[rt] = {}
-                self._norm_index[rt] = {}
-
-            self._name_index[rt][subject.name] = subject
-            self._norm_index[rt][_normalize_subject_name(subject.name)] = subject
-            if subject.sina_name:
-                self._name_index[rt][subject.sina_name] = subject
-                self._norm_index[rt][_normalize_subject_name(subject.sina_name)] = subject
-
-        result = await session.execute(
-            select(FinancialSubjectMapping).options(
-                selectinload(FinancialSubjectMapping.standard_subject)
-            )
-        )
-        mappings = result.scalars().all()
-        self._mapping_by_name = {}
-        for mapping in mappings:
-            if mapping.financial_name and mapping.standard_subject:
-                self._mapping_by_name[mapping.financial_name] = mapping.standard_subject
-                self._mapping_by_name[_normalize_subject_name(mapping.financial_name)] = (
-                    mapping.standard_subject
+        async with self._subject_cache_lock:
+            if self._subject_cache_loaded:
+                return
+            subjects = (await session.execute(select(AccountSubject))).scalars().all()
+            aliases = (
+                await session.execute(
+                    select(AccountSubjectSourceAlias)
+                    .options(selectinload(AccountSubjectSourceAlias.subject))
+                    .where(
+                        AccountSubjectSourceAlias.source == "sina",
+                        AccountSubjectSourceAlias.is_active == True,
+                    )
                 )
+            ).scalars().all()
+            self._subject_matcher = SinaSubjectMatcher(subjects, aliases)
+            self._subject_cache_loaded = True
+            logger.info(
+                "[Sina] 标准科目缓存加载完成: subjects=%s, sina_aliases=%s",
+                len(subjects),
+                len(aliases),
+            )
 
-        self._subject_cache_loaded = True
-        logger.info(
-            f"[Sina] 科目缓存加载完成: subjects={len(subjects)}, "
-            f"mappings={len(self._mapping_by_name)}"
-        )
-
-    def _match_subject_cached(
+    async def _match_subject(
         self,
+        session,
         subject_name: str,
         report_type: str,
-    ) -> Tuple[Optional[AccountSubject], int]:
-        """
-        匹配科目，返回 (subject, rank)。
-        rank 越小优先级越高：
-          0=别名表编码, 1=精确名, 2=sina_name/映射, 3=标准化名, 4=受控模糊
-        """
-        if not subject_name or subject_name in _SECTION_TITLES:
-            return None, 99
-
-        name = subject_name.strip()
-        rt = report_type
-        alias_code = SINA_SUBJECT_ALIASES.get(rt, {}).get(name)
-        if not alias_code:
-            # 也尝试标准化后的别名键
-            norm_for_alias = _normalize_subject_name(name)
-            for alias_name, code in SINA_SUBJECT_ALIASES.get(rt, {}).items():
-                if _normalize_subject_name(alias_name) == norm_for_alias:
-                    alias_code = code
-                    break
-        if alias_code and alias_code in self._subjects_by_code:
-            return self._subjects_by_code[alias_code], 0
-
-        name_idx = self._name_index.get(rt, {})
-        if name in name_idx:
-            return name_idx[name], 1
-
-        if name in self._mapping_by_name:
-            return self._mapping_by_name[name], 2
-
-        norm = _normalize_subject_name(name)
-        norm_idx = self._norm_index.get(rt, {})
-        if norm and norm in norm_idx:
-            return norm_idx[norm], 3
-        if norm and norm in self._mapping_by_name:
-            return self._mapping_by_name[norm], 2
-
-        # 受控模糊：仅允许“去掉合计/净额等后缀”后的等价，或短名被标准名精确包含且长度接近
-        best = None
-        best_score = 0
-        for subject in self._subjects_by_rt.get(rt, []):
-            s_norm = _normalize_subject_name(subject.name)
-            if not s_norm or not norm:
-                continue
-            if norm == s_norm:
-                return subject, 3
-            # 合计/净额/总额 后缀互认
-            for suffix in ("合计", "净额", "总额", "余额"):
-                if norm.rstrip(suffix) == s_norm or s_norm.rstrip(suffix) == norm:
-                    return subject, 3
-                if norm.endswith(suffix) and norm[: -len(suffix)] == s_norm:
-                    return subject, 3
-                if s_norm.endswith(suffix) and s_norm[: -len(suffix)] == norm:
-                    return subject, 3
-
-            # 仅当一方是另一方的真后缀/前缀，且较短方长度>=4，避免“利息收入”误伤
-            if len(norm) >= 4 and len(s_norm) >= 4:
-                if norm in s_norm or s_norm in norm:
-                    shorter = min(len(norm), len(s_norm))
-                    longer = max(len(norm), len(s_norm))
-                    # 长度差过大不采纳（如 “其他综合收益” vs 很长子项）
-                    if longer - shorter <= 6 and shorter / longer >= 0.7:
-                        score = shorter / longer
-                        if score > best_score:
-                            best = subject
-                            best_score = score
-
-        if best is not None:
-            return best, 4
-
-        self._unmatched_names.setdefault(rt, set()).add(name)
-        return None, 99
-
-    async def _match_subject(self, session, subject_name: str, report_type: str) -> Optional[AccountSubject]:
-        """兼容旧调用：确保缓存后走缓存匹配。"""
+        context_name: str = "",
+    ) -> Optional[AccountSubject]:
+        """兼容旧调用，返回安全匹配到的标准科目。"""
         await self._ensure_subject_cache(session)
-        subject, _rank = self._match_subject_cached(subject_name, report_type)
-        return subject
+        if self._subject_matcher is None:
+            return None
+        return self._subject_matcher.match(subject_name, report_type, context_name).subject
 
     async def crawl_stock_price(
         self,

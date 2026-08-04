@@ -11,7 +11,8 @@ import { AIModeLayout } from './components/AIMode/AIModeLayout';
 import { DataManagement } from './components/DataManagement/DataManagement';
 import { DataViewer } from './components/DataViewer/DataViewer';
 import { StockList } from './components/StockList/StockList';
-import { ReportsPage } from './components/Reports/ReportsPage'; 
+import { ReportsPage } from './components/Reports/ReportsPage';
+import { extractInvestmentRecommendations } from './utils/metricExtraction';
 
 // WebSocket服务器地址 - 使用相对路径以适应不同部署环境
 const WS_URL = import.meta.env.VITE_WS_URL || 
@@ -176,6 +177,7 @@ function App() {
       .filter(agent => agent.status !== 'idle' && agent.status !== 'error' && agent.content)
       .map(agent => ({
         id: `agent-${agent.id}`,
+        agentId: agent.id,
         agentName: agent.name || getDisplayName(agent.id),
         content: agent.content || '',
         timestamp: new Date().toISOString(),
@@ -184,14 +186,25 @@ function App() {
 
     const confMessages = state.conferenceMessages.map(msg => ({
       id: msg.id,
+      agentId: msg.agent_id,
       agentName: getDisplayName(msg.agent_id), // Map agent_id to name
       content: msg.content,
       timestamp: msg.timestamp,
       type: 'info' as const, // Default type for conference
     }));
 
-    // Sort by timestamp if needed, otherwise just append
-    return [...agentMessages, ...confMessages];
+    const portfolioDecision = agentMessages.find(
+      message => message.agentId === 'portfolio_manager'
+        && extractInvestmentRecommendations(message.content),
+    );
+    const nonDecisionAgentMessages = agentMessages.filter(
+      message => message !== portfolioDecision,
+    );
+
+    // PM 的最终建议置于会议讨论之后，自动滚动时始终可见。
+    return portfolioDecision
+      ? [...nonDecisionAgentMessages, ...confMessages, portfolioDecision]
+      : [...nonDecisionAgentMessages, ...confMessages];
   }, [agentList, state.conferenceMessages]);
 
 
