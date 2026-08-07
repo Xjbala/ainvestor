@@ -769,7 +769,7 @@ class ValuationForecast(Base):
     company: Mapped["Company"] = relationship("Company")
 
     __table_args__ = (
-        UniqueConstraint("company_code", "valuation_method", "base_year", "forecast_year", "parameters", name="uq_valuation_forecast"),
+        UniqueConstraint("company_code", "valuation_method", "base_year", "forecast_year", name="uq_valuation_forecast"),
         Index("ix_valuation_forecasts_company_year", "company_code", "base_year"),
         Index("ix_valuation_forecasts_method", "valuation_method"),
     )

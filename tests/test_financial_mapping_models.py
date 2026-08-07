@@ -21,6 +21,7 @@ from backend.persistence.financial_models import (
     FinancialData,
     FinancialMatchIssue,
     Industry,
+    ValuationForecast,
 )
 from backend.scripts.sina_mapping_catalog import load_sina_subject_mapping_catalog
 
@@ -98,6 +99,19 @@ class TestFinancialMappingModels(unittest.TestCase):
                 (alias["report_type"], alias["source_name"]),
                 rejected_keys,
             )
+
+    def test_valuation_forecast_unique_key_excludes_json_parameters(self):
+        unique_constraints = {
+            constraint.name: tuple(column.name for column in constraint.columns)
+            for constraint in ValuationForecast.__table__.constraints
+            if constraint.name
+        }
+
+        self.assertEqual(
+            ("company_code", "valuation_method", "base_year", "forecast_year"),
+            unique_constraints["uq_valuation_forecast"],
+        )
+        self.assertNotIn("parameters", unique_constraints["uq_valuation_forecast"])
 
     def test_catalog_targets_are_present_in_subject_initializer(self):
         initializer = Path(__file__).parents[1] / "backend/scripts/init_subjects.py"
