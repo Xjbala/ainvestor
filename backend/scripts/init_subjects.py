@@ -191,7 +191,12 @@ async def init_subjects():
             {'code': 'ISF002', 'name': '管理费用', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 2},
             {'code': 'ISF003', 'name': '研发费用', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 3},
             {'code': 'ISF004', 'name': '财务费用', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 4},
+            {'code': 'ISF005', 'name': '其中：利息费用', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 5},
+            {'code': 'ISF006', 'name': '利息收入', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 6},
+            {'code': 'ISF007', 'name': '加：其他收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 7},
             {'code': 'ISF016', 'name': '营业利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 16},
+            {'code': 'ISF017', 'name': '加：营业外收入', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 17},
+            {'code': 'ISF018', 'name': '减：营业外支出', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 18},
             
             # 四利润总额
             {'code': 'ISF019', 'name': '利润总额', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 19},

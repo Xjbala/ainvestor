@@ -4,6 +4,7 @@
 import os
 import sys
 import unittest
+from pathlib import Path
 
 from sqlalchemy import create_engine, inspect
 
@@ -97,6 +98,22 @@ class TestFinancialMappingModels(unittest.TestCase):
                 (alias["report_type"], alias["source_name"]),
                 rejected_keys,
             )
+
+    def test_catalog_targets_are_present_in_subject_initializer(self):
+        initializer = Path(__file__).parents[1] / "backend/scripts/init_subjects.py"
+        initializer_text = initializer.read_text(encoding="utf-8")
+        catalog = load_sina_subject_mapping_catalog()
+        catalog_codes = {
+            item["subject_code"]
+            for item in [*catalog["primary_sina_names"], *catalog["aliases"]]
+        }
+
+        missing_codes = sorted(
+            code
+            for code in catalog_codes
+            if f"'code': '{code}'" not in initializer_text
+        )
+        self.assertEqual([], missing_codes)
 
 
 if __name__ == "__main__":

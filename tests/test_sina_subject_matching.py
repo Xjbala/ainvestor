@@ -38,7 +38,7 @@ class TestSinaSubjectMatcher(unittest.TestCase):
         self.sina = FakeSubject(2, "STD002", "会计准则名称", ReportType.BS, "新浪主名称")
         self.alias_target = FakeSubject(3, "STD003", "第三科目", ReportType.BS)
         self.interest_income = FakeSubject(4, "ISI002", "利息收入", ReportType.IS)
-        self.finance_interest = FakeSubject(5, "ISF006", "财务费用利息收入", ReportType.IS)
+        self.finance_interest = FakeSubject(5, "ISF006", "利息收入", ReportType.IS)
 
         self.matcher = SinaSubjectMatcher(
             [
@@ -104,12 +104,12 @@ class TestSinaSubjectMatcher(unittest.TestCase):
         self.assertEqual("ISF006", result.subject.code)
         self.assertEqual("context_alias_exact", result.method)
 
-    def test_global_name_applies_without_context(self):
+    def test_global_name_without_context_is_ambiguous(self):
         result = self.matcher.match("利息收入", "IS")
 
-        self.assertTrue(result.matched)
-        self.assertEqual("ISI002", result.subject.code)
-        self.assertEqual("name_exact", result.method)
+        self.assertFalse(result.matched)
+        self.assertEqual("ambiguous", result.issue_type)
+        self.assertEqual(("ISF006", "ISI002"), result.candidate_subject_codes)
 
     def test_duplicate_exact_candidates_are_ambiguous(self):
         duplicate = FakeSubject(8, "STD008", "标准科目", ReportType.BS)
