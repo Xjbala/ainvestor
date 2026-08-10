@@ -115,14 +115,14 @@ class SinaCrawlerService(CrawlerService):
             return
         
         async with async_session_factory() as session:
-            # 获取或创建交易所
+            # 获取或创建交易所（与种子数据/exchange_crawler 统一使用 SSE/SZSE）
             exchanges = {}
-            for ex_code in ["sh", "sz"]:
+            for ex_code in ["SSE", "SZSE"]:
                 stmt = select(Exchange).where(Exchange.code == ex_code)
                 result = await session.execute(stmt)
                 ex = result.scalar_one_or_none()
                 if not ex:
-                    ex = Exchange(code=ex_code, name="上海证券交易所" if ex_code == "sh" else "深圳证券交易所", country="中国")
+                    ex = Exchange(code=ex_code, name="上海证券交易所" if ex_code == "SSE" else "深圳证券交易所", country="中国")
                     session.add(ex)
                     await session.flush()
                 exchanges[ex_code] = ex.id
@@ -142,7 +142,7 @@ class SinaCrawlerService(CrawlerService):
                     company = Company(
                         stock_code=stock_code,
                         stock_name=item.get("stock_name"),
-                        exchange_id=exchanges.get(item.get("exchange", "sh")),
+                        exchange_id=exchanges.get(item.get("exchange", "SSE")),
                         company_name=item.get("stock_name"), # 简化处理
                         status="active",
                         pe_ratio=item.get("pe_ratio"),
@@ -158,55 +158,76 @@ class SinaCrawlerService(CrawlerService):
         self,
         node: str,
         page: int = 1,
-        num: int = 500,
+        num: int = 100,
     ) -> List[Dict[str, Any]]:
         """
-        爬取单个市场的股票列表
+        爬取单个市场的股票列表（自动分页）
+
+        新浪 API 每页硬上限 100 条（num 参数无效），深市约 2900 只、
+        沪市约 2200 只，必须循环翻页才能采全。
 
         Args:
             node: 市场节点 (sh_a/sz_a)
-            page: 页码
-            num: 每页数量
+            page: 起始页码
+            num: 每页数量（Sina 实际硬上限 100）
 
         Returns:
             股票列表
         """
-        params = {
-            "node": node,
-            "page": page,
-            "num": num,
-            "_s_r_a": "auto",
-        }
-
-        data = await self.fetch_json(self.STOCK_LIST_URL, headers=self.HEADERS, params=params)
-
-        if not data:
-            logger.warning(f"Failed to fetch stock list for {node}")
-            return []
-
         companies = []
-        for item in data:
-            try:
-                # 解析股票代码
-                symbol = item.get("symbol", "")
-                exchange = "sh" if symbol.startswith("sh") else "sz"
-                stock_code = symbol[2:] if len(symbol) > 2 else symbol
+        seen_symbols = set()
+        current_page = page
 
-                companies.append({
-                    "stock_code": stock_code,
-                    "stock_name": item.get("name", ""),
-                    "exchange": exchange,
-                    "current_price": parse_decimal(item.get("trade")),
-                    "change_percent": parse_decimal(item.get("changepercent")),
-                    "volume": parse_decimal(item.get("volume")),
-                    "turnover": parse_decimal(item.get("amount")),
-                    "pe_ratio": parse_decimal(item.get("pe")),
-                    "pb_ratio": parse_decimal(item.get("pb")),
-                    "market_cap": parse_decimal(item.get("mktcap")),
-                })
-            except Exception as e:
-                logger.error(f"Failed to parse stock item: {e}")
-                continue
+        while True:
+            params = {
+                "node": node,
+                "page": current_page,
+                "num": num,
+                "_s_r_a": "auto",
+            }
+
+            data = await self.fetch_json(self.STOCK_LIST_URL, headers=self.HEADERS, params=params)
+
+            if not data:
+                logger.warning(f"Failed to fetch stock list for {node} page {current_page}")
+                break
+
+            page_count = 0
+            for item in data:
+                try:
+                    # 解析股票代码
+                    symbol = item.get("symbol", "")
+                    if not symbol or symbol in seen_symbols:
+                        continue
+                    seen_symbols.add(symbol)
+
+                    exchange = "SSE" if symbol.startswith("sh") else "SZSE"
+                    stock_code = symbol[2:] if len(symbol) > 2 else symbol
+
+                    companies.append({
+                        "stock_code": stock_code,
+                        "stock_name": item.get("name", ""),
+                        "exchange": exchange,
+                        "current_price": parse_decimal(item.get("trade")),
+                        "change_percent": parse_decimal(item.get("changepercent")),
+                        "volume": parse_decimal(item.get("volume")),
+                        "turnover": parse_decimal(item.get("amount")),
+                        "pe_ratio": parse_decimal(item.get("pe")),
+                        "pb_ratio": parse_decimal(item.get("pb")),
+                        "market_cap": parse_decimal(item.get("mktcap")),
+                    })
+                    page_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to parse stock item: {e}")
+                    continue
+
+            logger.info(f"{node} page {current_page}: got {page_count} items, total {len(companies)}")
+
+            # Sina 每页硬上限 100 条；不足说明已到末页
+            if len(data) < num:
+                break
+
+            current_page += 1
 
         return companies
 

@@ -83,11 +83,9 @@ class ExchangeCrawler(CrawlerService):
         companies = []
         seen_codes = set()
         
-        # 1: 主板A股, 2: 中小板 (现在并入主板), 3: 创业板
-        # 注意：深交所现在其实主要是 1 和 3
+        # tab1 = A股列表，已包含全部A股（主板 + 创业板 300xxx）
         market_types = [
-            {'tab': '1', 'name': '主板'},
-            {'tab': '3', 'name': '创业板'}
+            {'tab': '1', 'name': 'A股列表'},
         ]
 
         headers = {
