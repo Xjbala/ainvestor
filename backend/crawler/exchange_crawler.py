@@ -10,13 +10,13 @@ import asyncio
 import re
 from datetime import datetime, date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .base import CrawlerService, parse_decimal
+from .base import CrawlerService, append_task_log, parse_decimal
 from ..persistence.db import async_session_factory
 from ..persistence.financial_models import Company, Exchange, Industry, CompanyStatus
 
@@ -30,8 +30,8 @@ class ExchangeCrawler(CrawlerService):
 
     def __init__(self, session: AsyncSession, **kwargs):
         super().__init__(session, data_source_code="exchange_api", **kwargs)
-        self.szse_base_url = 'http://www.szse.cn'
-        self.szse_api_base = 'http://www.szse.cn/api'
+        self.szse_base_url = 'https://www.szse.cn'
+        self.szse_api_base = 'https://www.szse.cn/api'
         self.sse_base_url = 'http://query.sse.com.cn'
 
     async def crawl_company_list(self) -> List[Dict[str, Any]]:
@@ -40,12 +40,17 @@ class ExchangeCrawler(CrawlerService):
         """
         return await self.sync_companies_from_exchanges()
 
-    async def sync_companies_from_exchanges(self, exchanges: List[str] = None) -> List[Dict[str, Any]]:
+    async def sync_companies_from_exchanges(
+        self,
+        exchanges: List[str] = None,
+        progress_callback: Optional[Callable] = None,
+    ) -> List[Dict[str, Any]]:
         """
         从交易所同步公司数据
         
         Args:
             exchanges: 指定交易所列表，如 ['SSE', 'SZSE']
+            progress_callback: 可选的异步日志回调 (message, level)
             
         Returns:
             所有抓取到的公司数据列表
@@ -53,28 +58,43 @@ class ExchangeCrawler(CrawlerService):
         if exchanges is None:
             exchanges = ['SSE', 'SZSE']
 
+        async def _log(msg: str, level: str = "INFO"):
+            log_fn = getattr(logger, level.lower() if level != "WARNING" else "warning", logger.info)
+            log_fn(msg)
+            if progress_callback:
+                await progress_callback(msg, level)
+
         all_companies = []
-        
+
         # 独立处理每个交易所，确保互不影响
         if 'SZSE' in exchanges:
+            await _log("开始同步深交所(SZSE)公司列表...")
             try:
                 szse_companies = await self._crawl_szse()
                 if szse_companies:
                     await self.save_companies(szse_companies)
                     all_companies.extend(szse_companies)
-                    logger.info("SZSE sync completed and saved.")
+                    await _log(f"SZSE同步完成，共 {len(szse_companies)} 家公司")
+                else:
+                    await _log(
+                        "SZSE未获取到任何公司数据 — 请检查服务器网络是否能访问 www.szse.cn",
+                        level="ERROR",
+                    )
             except Exception as e:
-                logger.error(f"Failed to sync SZSE: {e}", exc_info=True)
-            
+                await _log(f"SZSE同步失败: {e}", level="ERROR")
+
         if 'SSE' in exchanges:
+            await _log("开始同步上交所(SSE)公司列表...")
             try:
                 sse_companies = await self._crawl_sse()
                 if sse_companies:
                     await self.save_companies(sse_companies)
                     all_companies.extend(sse_companies)
-                    logger.info("SSE sync completed and saved.")
+                    await _log(f"SSE同步完成，共 {len(sse_companies)} 家公司")
+                else:
+                    await _log("SSE未获取到任何公司数据", level="WARNING")
             except Exception as e:
-                logger.error(f"Failed to sync SSE: {e}", exc_info=True)
+                await _log(f"SSE同步失败: {e}", level="ERROR")
 
         return all_companies
 
@@ -91,7 +111,7 @@ class ExchangeCrawler(CrawlerService):
         headers = {
             'Host': 'www.szse.cn',
             'Accept': 'application/json, text/javascript, */*; q=0.01',
-            'Referer': 'http://www.szse.cn/market/product/stock/list/index.html',
+            'Referer': 'https://www.szse.cn/market/product/stock/list/index.html',
             'X-Requested-With': 'XMLHttpRequest',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
@@ -100,15 +120,19 @@ class ExchangeCrawler(CrawlerService):
             logger.info(f"Crawling SZSE {market['name']}...")
             tab = market['tab']
             page_size = 50
-            
+
             # 获取总页数
             try:
                 total_pages = await self._get_szse_total_pages(tab, page_size, headers)
             except Exception as e:
-                logger.error(f"Failed to get SZSE total pages for {market['name']}: {e}")
+                logger.error(f"SZSE获取总页数失败({market['name']}): {e}")
                 continue
 
             if not total_pages:
+                logger.error(
+                    "SZSE未返回有效页数 — 可能是网络不通或API变更。"
+                    f"请确认服务器可访问 {self.szse_api_base}/report/ShowReport/data"
+                )
                 continue
 
             for page in range(1, total_pages + 1):

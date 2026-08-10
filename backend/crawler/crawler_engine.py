@@ -107,7 +107,13 @@ class CrawlerEngine:
                         await append_task_log(session, task, "进入公司列表采集流程")
                         if data_source.code == "exchange_api":
                             await append_task_log(session, task, "使用交易所官方 API 同步公司列表")
-                            companies = await service.sync_companies_from_exchanges()
+
+                            async def _exchange_progress(msg, level="INFO"):
+                                await append_task_log(session, task, msg, level=level)
+
+                            companies = await service.sync_companies_from_exchanges(
+                                progress_callback=_exchange_progress,
+                            )
                             count = len(companies or [])
                             task.total_count = count
                             task.success_count = count
