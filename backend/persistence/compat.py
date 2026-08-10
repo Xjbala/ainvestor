@@ -47,13 +47,10 @@ class CompatDatabase:
     async def connect(self):
         """连接数据库（初始化表结构）"""
         if not self._initialized:
-            try:
-                await init_database()
-                self._initialized = True
-                logger.info("Database connected (MySQL via SQLAlchemy)")
-            except Exception as e:
-                logger.warning(f"Database init warning: {e}, continuing...")
-                self._initialized = True
+            # init_database 内部已有容错：仅在关键表也无法创建时才抛异常
+            await init_database()
+            self._initialized = True
+            logger.info("Database connected (MySQL via SQLAlchemy)")
 
     async def close(self):
         """关闭数据库连接"""

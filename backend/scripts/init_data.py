@@ -5,11 +5,14 @@ import os
 # Add backend to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from backend.persistence.db import async_session_factory
+from backend.persistence.db import async_session_factory, engine, init_database
 from backend.persistence.financial_models import DataSource, DataSourceType, Exchange
 from sqlalchemy import select, text
 
 async def init_data():
+    # 确保数据库表已创建
+    await init_database()
+
     async with async_session_factory() as session:
         print("Initializing data sources...")
         
@@ -24,7 +27,7 @@ async def init_data():
             },
             {
                 "code": "exchange_api",
-                "name": "交易所官网",
+                "name": "交易所官方API",
                 "base_url": "", 
                 "api_type": DataSourceType.JSON,
                 "created_at": "2023-01-01 00:00:00"
@@ -102,3 +105,5 @@ async def init_data():
 
 if __name__ == "__main__":
     asyncio.run(init_data())
+    # 显式释放连接池，避免 "Event loop is closed" 警告
+    asyncio.run(engine.dispose())

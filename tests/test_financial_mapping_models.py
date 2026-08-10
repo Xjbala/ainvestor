@@ -24,6 +24,7 @@ from backend.persistence.financial_models import (
     ValuationForecast,
 )
 from backend.scripts.sina_mapping_catalog import load_sina_subject_mapping_catalog
+from backend.scripts.bank_subject_catalog import load_bank_subject_catalog
 
 
 class TestFinancialMappingModels(unittest.TestCase):
@@ -128,6 +129,39 @@ class TestFinancialMappingModels(unittest.TestCase):
             if f"'code': '{code}'" not in initializer_text
         )
         self.assertEqual([], missing_codes)
+
+    def test_bank_catalog_standard_targets_are_present_in_subject_initializer(self):
+        """银行目录中引用标准科目（非银行专属）的别名目标必须在 init_subjects 中有定义。"""
+        initializer = Path(__file__).parents[1] / "backend/scripts/init_subjects.py"
+        initializer_text = initializer.read_text(encoding="utf-8")
+        catalog = load_bank_subject_catalog()
+
+        bank_subject_codes = {entry["code"] for entry in catalog["subjects"]}
+        alias_target_codes = {entry["subject_code"] for entry in catalog["aliases"]}
+        standard_targets = alias_target_codes - bank_subject_codes
+
+        missing_codes = sorted(
+            code
+            for code in standard_targets
+            if f"'code': '{code}'" not in initializer_text
+        )
+        self.assertEqual([], missing_codes,
+            f"银行别名引用的标准科目在 init_subjects.py 中缺失: {missing_codes}")
+
+    def test_wacc_interest_codes_exclude_fair_value_and_credit_impairment(self):
+        """WACC 利息费用科目不得使用公允价值变动收益(ISF013)或信用减值损失(ISF014)。"""
+        from backend.valuation.wacc import WACCService
+
+        self.assertNotIn("ISF013", WACCService.INTEREST_CODES)
+        self.assertNotIn("ISF014", WACCService.INTEREST_CODES)
+        self.assertIn("ISF005", WACCService.INTEREST_CODES)
+
+    def test_wacc_ebt_codes_exclude_non_operating_expense(self):
+        """WACC 税前利润科目只应为 ISF019（利润总额），不含营业外支出 ISF018。"""
+        from backend.valuation.wacc import WACCService
+
+        self.assertEqual(["ISF019"], WACCService.EBT_CODES)
+        self.assertNotIn("ISF018", WACCService.EBT_CODES)
 
 
 if __name__ == "__main__":

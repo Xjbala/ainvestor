@@ -115,25 +115,29 @@ async def init_database() -> None:
     from . import orm_models  # noqa: F401
     from . import financial_models  # noqa: F401
 
+    import logging
+    _logger = logging.getLogger(__name__)
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
         # 历史库可能存在不兼容约束（如 JSON 唯一索引），全量 create_all 会失败。
-        # 回退为仅确保新增关键表存在，避免阻断服务启动。
-        import logging
-
-        logging.getLogger(__name__).warning(
-            "Full create_all failed (%s); ensuring critical new tables only", e
-        )
+        # 记录完整错误后，尝试仅确保新增关键表存在。
+        _logger.error("全量 create_all 失败，尝试仅创建关键表: %s", e, exc_info=True)
         from .financial_models import FinancialCoverageSnapshot
 
-        async with engine.begin() as conn:
-            await conn.run_sync(
-                lambda sync_conn: FinancialCoverageSnapshot.__table__.create(
-                    sync_conn, checkfirst=True
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(
+                    lambda sync_conn: FinancialCoverageSnapshot.__table__.create(
+                        sync_conn, checkfirst=True
+                    )
                 )
-            )
+            _logger.warning("全量 create_all 失败，仅创建了关键表；请检查数据库约束")
+        except Exception as fallback_err:
+            _logger.error("关键表创建也失败: %s", fallback_err, exc_info=True)
+            raise
 
 
 async def close_database() -> None:

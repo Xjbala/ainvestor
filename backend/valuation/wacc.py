@@ -36,14 +36,14 @@ def _env_float(key: str, default: float) -> float:
 class WACCService:
     """CAPM 驱动的 WACC 拆解。"""
 
-    # 利息支出（近似）
-    INTEREST_CODES = ["ISF013", "ISF014"]  # 财务费用 / 利息费用（若有）
+    # 利息费用（非银行企业使用利润表明细科目 ISF005）
+    INTEREST_CODES = ["ISF005"]  # 其中：利息费用
     # 有息债务科目
     SHORT_DEBT_CODES = ["BSL001", "BSL002", "BSL003"]
     LONG_DEBT_CODES = ["BSL102", "BSL103"]
     CASH_CODES = ["BSA001", "BSA002", "BSA003"]
     TAX_CODES = ["ISF020"]
-    EBT_CODES = ["ISF019", "ISF018"]  # 利润总额
+    EBT_CODES = ["ISF019"]  # 利润总额（不含营业外支出，避免重复扣减）
     NET_INCOME_CODES = ["ISF021"]
     OPERATING_INCOME_CODES = ["ISF016"]
 

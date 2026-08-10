@@ -194,20 +194,31 @@ async def init_subjects():
             {'code': 'ISF005', 'name': '其中：利息费用', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 5},
             {'code': 'ISF006', 'name': '利息收入', 'category_code': 'IS_EXPENSES', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 6},
             {'code': 'ISF007', 'name': '加：其他收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 7},
-            {'code': 'ISF016', 'name': '营业利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 16},
+            {'code': 'ISF008', 'name': '投资收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 8},
+            {'code': 'ISF009', 'name': '其中：对联营企业和合营企业的投资收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 9},
+            {'code': 'ISF010', 'name': '以摊余成本计量的金融资产终止确认收益（损失）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 10},
+            {'code': 'ISF011', 'name': '汇兑收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 11},
+            {'code': 'ISF012', 'name': '净投资收益（净损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_financial': True, 'sort_order': 12},
+            {'code': 'ISF013', 'name': '公允价值变动收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 13},
+            {'code': 'ISF014', 'name': '信用减值损失（转回以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 14},
+            {'code': 'ISF015', 'name': '资产处置收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 15},
+            {'code': 'ISF016', 'name': '营业利润（亏损以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 16},
             {'code': 'ISF017', 'name': '加：营业外收入', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 17},
             {'code': 'ISF018', 'name': '减：营业外支出', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 18},
-            
-            # 四利润总额
-            {'code': 'ISF019', 'name': '利润总额', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 19},
-            
+
+            # 四、利润总额
+            {'code': 'ISF019', 'name': '利润总额（亏损总额以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 19},
+
             # 五、净利润
-            {'code': 'ISF021', 'name': '净利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 21},
-            {'code': 'ISF023', 'name': '持续经营净利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 23},
-            {'code': 'ISF024', 'name': '终止经营净利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 24},
-            {'code': 'ISF026', 'name': '归属于母公司所有者的净利润', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 26},
+            {'code': 'ISF020', 'name': '减：所得税费用', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 20},
+            {'code': 'ISF021', 'name': '净利润（净亏损以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_summary': True, 'sort_order': 21},
+            {'code': 'ISF022', 'name': '（一）按经营持续性分类', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 22},
+            {'code': 'ISF023', 'name': '持续经营净利润（净亏损以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 23},
+            {'code': 'ISF024', 'name': '终止经营净利润（净亏损以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 24},
+            {'code': 'ISF025', 'name': '（二）按所有权归属分类', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 25},
+            {'code': 'ISF026', 'name': '归属于母公司所有者的净利润（净亏损）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 26},
             {'code': 'ISF027', 'name': '少数股东损益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 27},
-            {'code': 'ISF028', 'name': '资产减值损失', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 14},
+            {'code': 'ISF028', 'name': '资产减值损失', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 28},
             {'code': 'ISE001', 'name': '基本每股收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 40},
             {'code': 'ISE002', 'name': '稀释每股收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 41},
             {'code': 'ISO001', 'name': '其他综合收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 30},
@@ -290,3 +301,5 @@ async def init_subjects():
 
 if __name__ == "__main__":
     asyncio.run(init_subjects())
+    # 显式释放连接池，避免 "Event loop is closed" 警告
+    asyncio.run(engine.dispose())
