@@ -198,7 +198,7 @@ async def init_subjects():
             {'code': 'ISF009', 'name': '其中：对联营企业和合营企业的投资收益', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 9},
             {'code': 'ISF010', 'name': '以摊余成本计量的金融资产终止确认收益（损失）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 10},
             {'code': 'ISF011', 'name': '汇兑收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 11},
-            {'code': 'ISF012', 'name': '净投资收益（净损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'is_financial': True, 'sort_order': 12},
+            {'code': 'ISF012', 'name': '净投资收益（净损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'legacy_is_financial': True, 'sort_order': 12},
             {'code': 'ISF013', 'name': '公允价值变动收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 13},
             {'code': 'ISF014', 'name': '信用减值损失（转回以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 14},
             {'code': 'ISF015', 'name': '资产处置收益（损失以“-”号填列）', 'category_code': 'IS_OTHER_INCOME', 'report_type': ReportType.IS, 'subject_category': 'F', 'sort_order': 15},
