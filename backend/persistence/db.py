@@ -114,18 +114,33 @@ async def init_database() -> None:
     # 确保财务/分部等模型注册到 Base.metadata
     from . import orm_models  # noqa: F401
     from . import financial_models  # noqa: F401
+    from .financial_models import (
+        FinancialCoverageSnapshot,
+        FinancialCoverageSnapshotCompany,
+        FinancialData,
+    )
 
     import logging
     _logger = logging.getLogger(__name__)
 
+    def _ensure_coverage_storage(sync_conn):
+        FinancialCoverageSnapshotCompany.__table__.create(sync_conn, checkfirst=True)
+        coverage_index = next(
+            index
+            for index in FinancialData.__table__.indexes
+            if index.name == "ix_financial_data_coverage_lookup"
+        )
+        coverage_index.create(sync_conn, checkfirst=True)
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(_ensure_coverage_storage)
     except Exception as e:
         # 历史库可能存在不兼容约束（如 JSON 唯一索引），全量 create_all 会失败。
         # 记录完整错误后，尝试仅确保新增关键表存在。
         _logger.error("全量 create_all 失败，尝试仅创建关键表: %s", e, exc_info=True)
-        from .financial_models import FinancialCoverageSnapshot
+        from .financial_models import FinancialCoverageSnapshot, FinancialCoverageSnapshotCompany
 
         try:
             async with engine.begin() as conn:
@@ -134,6 +149,12 @@ async def init_database() -> None:
                         sync_conn, checkfirst=True
                     )
                 )
+                await conn.run_sync(
+                    lambda sync_conn: FinancialCoverageSnapshotCompany.__table__.create(
+                        sync_conn, checkfirst=True
+                    )
+                )
+                await conn.run_sync(_ensure_coverage_storage)
             _logger.warning("全量 create_all 失败，仅创建了关键表；请检查数据库约束")
         except Exception as fallback_err:
             _logger.error("关键表创建也失败: %s", fallback_err, exc_info=True)

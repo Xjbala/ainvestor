@@ -4,7 +4,7 @@
  * 展示 公司 × 报表 × 年份 矩阵完整度，支持筛选缺口并一键补采。
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     AlertCircle,
     CheckCircle2,
@@ -83,8 +83,11 @@ export const FinancialCoveragePanel: React.FC<{
     const [selected, setSelected] = useState<Set<string>>(new Set());
     const [expandedCode, setExpandedCode] = useState<string | null>(null);
     const [snapshotHint, setSnapshotHint] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
+    const latestRequest = useRef(0);
 
     const load = useCallback(async (opts?: { refresh?: boolean }) => {
+        const requestId = ++latestRequest.current;
         setIsLoading(true);
         setError('');
         try {
@@ -100,6 +103,7 @@ export const FinancialCoveragePanel: React.FC<{
                 useSnapshot: true,
                 refresh: opts?.refresh,
             });
+            if (requestId !== latestRequest.current) return;
             setData(res);
             setSelected(new Set());
             if (res.from_snapshot && res.scanned_at) {
@@ -112,15 +116,18 @@ export const FinancialCoveragePanel: React.FC<{
                 setSnapshotHint('');
             }
         } catch (e) {
+            if (requestId !== latestRequest.current) return;
             setError(e instanceof Error ? e.message : String(e));
         } finally {
-            setIsLoading(false);
+            if (requestId === latestRequest.current) {
+                setIsLoading(false);
+            }
         }
     }, [years, onlyGaps, appliedSearch, page, pageSize]);
 
     useEffect(() => {
         load();
-    }, [load]);
+    }, [load, reloadKey]);
 
     const handleForceScan = async () => {
         setIsScanning(true);
@@ -136,7 +143,7 @@ export const FinancialCoveragePanel: React.FC<{
                 `已扫描并落库快照 #${res.snapshot_id ?? '-'}，覆盖率 ${formatPct(res.summary?.coverage_rate)}，缺口公司 ${res.summary?.gap_company_count ?? 0}`,
             );
             setPage(1);
-            await load();
+            setReloadKey((key) => key + 1);
         } catch (e) {
             setRepairMsg(e instanceof Error ? e.message : String(e));
         } finally {
@@ -474,7 +481,7 @@ export const FinancialCoveragePanel: React.FC<{
                     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
                         <button
                             type="button"
-                            disabled={page <= 1}
+                            disabled={isLoading || page <= 1}
                             onClick={() => setPage((p) => Math.max(1, p - 1))}
                             className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40"
                         >
@@ -485,7 +492,7 @@ export const FinancialCoveragePanel: React.FC<{
                         </span>
                         <button
                             type="button"
-                            disabled={page >= totalPages}
+                            disabled={isLoading || page >= totalPages}
                             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                             className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40"
                         >

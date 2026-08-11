@@ -403,6 +403,13 @@ class FinancialData(Base):
         UniqueConstraint("company_code", "subject_id", "report_date", "report_type", name="uq_financial_data"),
         Index("ix_financial_data_company_date", "company_code", "report_date"),
         Index("ix_financial_data_subject_date", "subject_id", "report_date"),
+        Index(
+            "ix_financial_data_coverage_lookup",
+            "company_code",
+            "report_type",
+            "report_date",
+            "subject_code",
+        ),
     )
 
     def __repr__(self) -> str:
@@ -889,3 +896,41 @@ class FinancialCoverageSnapshot(Base):
 
     def __repr__(self) -> str:
         return f"<FinancialCoverageSnapshot {self.id} {self.scope_key} {self.coverage_rate}>"
+
+
+class FinancialCoverageSnapshotCompany(Base):
+    """财务覆盖率快照中的单家公司明细，用于数据库分页。"""
+    __tablename__ = "financial_coverage_snapshot_companies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("financial_coverage_snapshots.id"),
+        nullable=False,
+    )
+    stock_code: Mapped[str] = mapped_column(String(10), nullable=False)
+    stock_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    overall_status: Mapped[str] = mapped_column(String(12), nullable=False)
+    coverage_rate: Mapped[Decimal] = mapped_column(Numeric(8, 6), default=0)
+    complete_cells: Mapped[int] = mapped_column(Integer, default=0)
+    partial_cells: Mapped[int] = mapped_column(Integer, default=0)
+    missing_cells: Mapped[int] = mapped_column(Integer, default=0)
+    expected_cells: Mapped[int] = mapped_column(Integer, default=0)
+    company_payload: Mapped[dict] = mapped_column(JSON, comment="单家公司覆盖矩阵")
+
+    __table_args__ = (
+        UniqueConstraint("snapshot_id", "stock_code", name="uq_coverage_snapshot_company"),
+        Index(
+            "ix_coverage_snapshot_company_page",
+            "snapshot_id",
+            "overall_status",
+            "stock_code",
+        ),
+        Index("ix_coverage_snapshot_company_code", "snapshot_id", "stock_code"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<FinancialCoverageSnapshotCompany {self.snapshot_id} "
+            f"{self.stock_code} {self.overall_status}>"
+        )

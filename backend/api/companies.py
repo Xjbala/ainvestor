@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Background
 from pydantic import BaseModel, Field
 from sqlalchemy import select, func, desc, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import defer, joinedload
 from uuid import uuid4
 
 from ..core.dependencies import get_current_user, require_admin, get_current_user_optional
@@ -37,10 +37,14 @@ from ..analysis.coverage_service import (
     default_coverage_years,
     normalize_report_types,
     build_scope_key,
+    extract_gap_items,
     scan_coverage,
     scan_and_save,
     get_latest_snapshot,
+    get_snapshot_gap_items,
     list_snapshots,
+    paginate_snapshot_companies,
+    snapshot_has_company_details,
     snapshot_to_dict,
     paginate_coverage_result,
     core_subjects_payload,
@@ -233,7 +237,7 @@ async def get_financial_coverage(
     include_cells: bool = Query(True, description="是否返回每公司矩阵明细"),
     use_snapshot: bool = Query(
         True,
-        description="优先读取最新快照；无快照或局部过滤时回退在线扫描",
+        description="优先读取最新快照；无快照或指定股票范围时回退在线扫描",
     ),
     refresh: bool = Query(False, description="强制在线重扫（全市场时会落库新快照）"),
     session: AsyncSession = Depends(get_db_session),
@@ -242,17 +246,17 @@ async def get_financial_coverage(
     财务数据覆盖率看板。
 
     默认读最新快照；可 refresh=true 强制重扫并落库。
-    带 stock_codes/search 的局部查询始终在线计算，不覆盖全市场快照。
+    指定 stock_codes 时在线计算；名称/代码搜索可复用全市场快照。
     """
     year_list = _parse_years_param(years)
     rt_list = normalize_report_types(
         [rt.strip() for rt in report_types.split(",") if rt.strip()]
     )
     codes = [c.strip() for c in (stock_codes or "").split(",") if c.strip()] or None
-    is_partial = bool(codes) or bool(search and search.strip())
+    has_search = bool(search and search.strip())
 
     raw: Dict[str, Any]
-    if refresh and not is_partial:
+    if refresh and not codes and not has_search:
         raw = await scan_and_save(
             session,
             years=year_list,
@@ -260,14 +264,26 @@ async def get_financial_coverage(
             status_filter=status_filter,
             source="api_refresh",
         )
-    elif use_snapshot and not is_partial and not refresh:
+    elif use_snapshot and not codes and not refresh:
         snap = await get_latest_snapshot(
             session,
             years=year_list,
             report_types=rt_list,
             status_filter=status_filter,
+            include_payload=False,
         )
+        if snap and await snapshot_has_company_details(session, snap):
+            return await paginate_snapshot_companies(
+                session,
+                snap,
+                only_gaps=only_gaps,
+                page=page,
+                page_size=page_size,
+                include_cells=include_cells,
+                search=search,
+            )
         if snap:
+            await session.refresh(snap, attribute_names=["companies_payload"])
             raw = snapshot_to_dict(snap, include_companies=True)
             raw["status_filter"] = status_filter
         else:
@@ -276,6 +292,7 @@ async def get_financial_coverage(
                 years=year_list,
                 report_types=rt_list,
                 status_filter=status_filter,
+                search=search if has_search else None,
             )
     else:
         raw = await scan_coverage(
@@ -284,7 +301,7 @@ async def get_financial_coverage(
             report_types=rt_list,
             status_filter=status_filter,
             stock_codes=codes,
-            search=search if is_partial else None,
+            search=search if has_search else None,
         )
 
     return paginate_coverage_result(
@@ -293,7 +310,7 @@ async def get_financial_coverage(
         page=page,
         page_size=page_size,
         include_cells=include_cells,
-        search=None if is_partial and codes else search,
+        search=search,
     )
 
 
@@ -395,9 +412,25 @@ async def get_financial_coverage_snapshot(
     """读取指定快照详情。"""
     from ..persistence.financial_models import FinancialCoverageSnapshot
 
-    snap = await session.get(FinancialCoverageSnapshot, snapshot_id)
+    stmt = (
+        select(FinancialCoverageSnapshot)
+        .where(FinancialCoverageSnapshot.id == snapshot_id)
+        .options(defer(FinancialCoverageSnapshot.companies_payload))
+    )
+    snap = (await session.execute(stmt)).scalar_one_or_none()
     if not snap:
         raise HTTPException(status_code=404, detail="快照不存在")
+    if await snapshot_has_company_details(session, snap):
+        return await paginate_snapshot_companies(
+            session,
+            snap,
+            only_gaps=only_gaps,
+            page=page,
+            page_size=page_size,
+            include_cells=include_cells,
+            search=search,
+        )
+    await session.refresh(snap, attribute_names=["companies_payload"])
     raw = snapshot_to_dict(snap, include_companies=True)
     return paginate_coverage_result(
         raw,
@@ -425,42 +458,55 @@ async def get_financial_gaps(
 
     每个 gap: company + report_type + year + missing_required
     """
-    coverage = await get_financial_coverage(
-        years=years,
-        report_types=report_types,
-        status_filter=status_filter,
-        search=search,
-        stock_codes=stock_codes,
-        only_gaps=True,
-        page=1,
-        page_size=100000,
-        include_cells=True,
-        use_snapshot=use_snapshot,
-        refresh=False,
-        session=session,
+    year_list = _parse_years_param(years)
+    rt_list = normalize_report_types(
+        [rt.strip() for rt in report_types.split(",") if rt.strip()]
     )
+    codes = [c.strip() for c in (stock_codes or "").split(",") if c.strip()] or None
+    has_search = bool(search and search.strip())
+    snap = None
+    if use_snapshot and not codes:
+        snap = await get_latest_snapshot(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+            include_payload=False,
+        )
 
-    gaps: List[Dict[str, Any]] = []
-    for company in coverage["companies"]:
-        for cell in company.get("cells") or []:
-            if cell.get("status") == "complete":
-                continue
-            gaps.append(
-                {
-                    "stock_code": company["stock_code"],
-                    "stock_name": company["stock_name"],
-                    "year": cell["year"],
-                    "report_type": cell["report_type"],
-                    "status": cell["status"],
-                    "core_hit_rate": cell["core_hit_rate"],
-                    "missing_required": cell.get("missing_required") or [],
-                    "missing_optional": cell.get("missing_optional") or [],
-                }
-            )
-            if len(gaps) >= limit:
-                break
-        if len(gaps) >= limit:
-            break
+    if snap and await snapshot_has_company_details(session, snap):
+        gaps = await get_snapshot_gap_items(
+            session,
+            snap,
+            limit=limit,
+            search=search,
+        )
+        coverage_meta = {
+            "years": snap.years or [],
+            "report_types": snap.report_types or [],
+            "summary": snap.summary or {},
+            "from_snapshot": True,
+            "snapshot_id": snap.id,
+            "scanned_at": snap.created_at.isoformat() if snap.created_at else None,
+        }
+    else:
+        raw = await scan_coverage(
+            session,
+            years=year_list,
+            report_types=rt_list,
+            status_filter=status_filter,
+            stock_codes=codes,
+            search=search if has_search else None,
+        )
+        gaps = extract_gap_items(raw.get("companies") or [], limit=limit)
+        coverage_meta = {
+            "years": raw["years"],
+            "report_types": raw["report_types"],
+            "summary": raw["summary"],
+            "from_snapshot": False,
+            "snapshot_id": None,
+            "scanned_at": None,
+        }
 
     repair_targets: Dict[str, Dict[str, Any]] = {}
     for g in gaps:
@@ -493,15 +539,15 @@ async def get_financial_gaps(
     targets.sort(key=lambda x: (-x["gap_count"], x["stock_code"]))
 
     return {
-        "years": coverage["years"],
-        "report_types": coverage["report_types"],
-        "summary": coverage["summary"],
+        "years": coverage_meta["years"],
+        "report_types": coverage_meta["report_types"],
+        "summary": coverage_meta["summary"],
         "gap_count": len(gaps),
         "gaps": gaps,
         "repair_targets": targets,
-        "from_snapshot": coverage.get("from_snapshot"),
-        "snapshot_id": coverage.get("snapshot_id"),
-        "scanned_at": coverage.get("scanned_at"),
+        "from_snapshot": coverage_meta.get("from_snapshot"),
+        "snapshot_id": coverage_meta.get("snapshot_id"),
+        "scanned_at": coverage_meta.get("scanned_at"),
     }
 
 

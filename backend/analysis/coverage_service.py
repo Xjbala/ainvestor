@@ -16,13 +16,15 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Sequence
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from ..persistence.financial_models import (
     Company,
     CompanyStatus,
     FinancialCoverageSnapshot,
+    FinancialCoverageSnapshotCompany,
     FinancialData,
     Industry,
     ReportType,
@@ -270,6 +272,27 @@ async def save_coverage_snapshot(
         created_by=created_by,
     )
     session.add(snap)
+    await session.flush()
+
+    company_rows = []
+    for company in scan_result.get("companies") or []:
+        company_rows.append(
+            FinancialCoverageSnapshotCompany(
+                snapshot_id=snap.id,
+                stock_code=str(company.get("stock_code") or ""),
+                stock_name=str(company.get("stock_name") or company.get("stock_code") or ""),
+                overall_status=str(company.get("overall_status") or "missing"),
+                coverage_rate=Decimal(str(company.get("coverage_rate") or 0)),
+                complete_cells=int(company.get("complete_cells") or 0),
+                partial_cells=int(company.get("partial_cells") or 0),
+                missing_cells=int(company.get("missing_cells") or 0),
+                expected_cells=int(company.get("expected_cells") or 0),
+                company_payload=company,
+            )
+        )
+    if company_rows:
+        session.add_all(company_rows)
+
     await session.commit()
     await session.refresh(snap)
     logger.info(
@@ -322,6 +345,7 @@ async def get_latest_snapshot(
     report_types: Optional[Sequence[str]] = None,
     status_filter: str = "active",
     scope_key: Optional[str] = None,
+    include_payload: bool = True,
 ) -> Optional[FinancialCoverageSnapshot]:
     if not scope_key:
         y = default_coverage_years(years)
@@ -333,6 +357,8 @@ async def get_latest_snapshot(
         .order_by(FinancialCoverageSnapshot.created_at.desc())
         .limit(1)
     )
+    if not include_payload:
+        stmt = stmt.options(defer(FinancialCoverageSnapshot.companies_payload))
     return (await session.execute(stmt)).scalar_one_or_none()
 
 
@@ -394,6 +420,164 @@ async def scan_and_save(
     result["source"] = source
     result["partial_scope"] = False
     return result
+
+
+async def snapshot_has_company_details(
+    session: AsyncSession,
+    snapshot: FinancialCoverageSnapshot,
+) -> bool:
+    """判断快照是否已写入可分页的公司明细。"""
+    if not snapshot.company_count:
+        return True
+    stmt = (
+        select(FinancialCoverageSnapshotCompany.id)
+        .where(FinancialCoverageSnapshotCompany.snapshot_id == snapshot.id)
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+def _snapshot_response_base(snapshot: FinancialCoverageSnapshot) -> Dict[str, Any]:
+    return {
+        "years": snapshot.years or [],
+        "report_types": snapshot.report_types or [],
+        "status_filter": snapshot.status_filter,
+        "summary": snapshot.summary or {},
+        "gap_companies": snapshot.gap_companies or [],
+        "core_subjects": snapshot.core_subjects
+        or core_subjects_payload(snapshot.report_types or ["BS", "IS", "CF"]),
+        "from_snapshot": True,
+        "snapshot_id": snapshot.id,
+        "scanned_at": snapshot.created_at.isoformat() if snapshot.created_at else None,
+        "scan_duration_ms": snapshot.scan_duration_ms or 0,
+        "source": snapshot.source,
+        "scope_key": snapshot.scope_key,
+    }
+
+
+async def paginate_snapshot_companies(
+    session: AsyncSession,
+    snapshot: FinancialCoverageSnapshot,
+    *,
+    only_gaps: bool = False,
+    page: int = 1,
+    page_size: int = 50,
+    include_cells: bool = True,
+    search: Optional[str] = None,
+) -> Dict[str, Any]:
+    """在数据库中筛选并分页读取一个新格式快照。"""
+    predicates = [FinancialCoverageSnapshotCompany.snapshot_id == snapshot.id]
+    if only_gaps:
+        predicates.append(FinancialCoverageSnapshotCompany.overall_status != "complete")
+    if search and search.strip():
+        query = search.strip()
+        predicates.append(
+            or_(
+                FinancialCoverageSnapshotCompany.stock_code.contains(query),
+                FinancialCoverageSnapshotCompany.stock_name.contains(query),
+            )
+        )
+
+    total_stmt = select(func.count()).select_from(FinancialCoverageSnapshotCompany).where(*predicates)
+    total = int((await session.execute(total_stmt)).scalar_one() or 0)
+    offset = max(page - 1, 0) * page_size
+    items_stmt = (
+        select(FinancialCoverageSnapshotCompany.company_payload)
+        .where(*predicates)
+        .order_by(FinancialCoverageSnapshotCompany.stock_code.asc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    page_items = [dict(payload or {}) for payload in (await session.execute(items_stmt)).scalars().all()]
+    if not include_cells:
+        page_items = [{key: value for key, value in item.items() if key != "cells"} for item in page_items]
+
+    return {
+        **_snapshot_response_base(snapshot),
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "companies": page_items,
+    }
+
+
+def extract_gap_items(
+    companies: Sequence[Dict[str, Any]],
+    *,
+    limit: int,
+) -> List[Dict[str, Any]]:
+    """从公司覆盖矩阵中提取补采所需的缺口单元。"""
+    gaps: List[Dict[str, Any]] = []
+    for company in companies:
+        for cell in company.get("cells") or []:
+            if cell.get("status") == "complete":
+                continue
+            gaps.append(
+                {
+                    "stock_code": company.get("stock_code"),
+                    "stock_name": company.get("stock_name"),
+                    "year": cell.get("year"),
+                    "report_type": cell.get("report_type"),
+                    "status": cell.get("status"),
+                    "core_hit_rate": cell.get("core_hit_rate"),
+                    "missing_required": cell.get("missing_required") or [],
+                    "missing_optional": cell.get("missing_optional") or [],
+                }
+            )
+            if len(gaps) >= limit:
+                return gaps
+    return gaps
+
+
+async def get_snapshot_gap_items(
+    session: AsyncSession,
+    snapshot: FinancialCoverageSnapshot,
+    *,
+    limit: int,
+    search: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """仅遍历快照中的缺口公司，返回补采所需的缺口单元。"""
+    predicates = [
+        FinancialCoverageSnapshotCompany.snapshot_id == snapshot.id,
+        FinancialCoverageSnapshotCompany.overall_status != "complete",
+    ]
+    if search and search.strip():
+        query = search.strip()
+        predicates.append(
+            or_(
+                FinancialCoverageSnapshotCompany.stock_code.contains(query),
+                FinancialCoverageSnapshotCompany.stock_name.contains(query),
+            )
+        )
+
+    stmt = (
+        select(FinancialCoverageSnapshotCompany.company_payload)
+        .where(*predicates)
+        .order_by(FinancialCoverageSnapshotCompany.stock_code.asc())
+    )
+    gaps: List[Dict[str, Any]] = []
+    stream = await session.stream_scalars(stmt)
+    async for payload in stream:
+        company = dict(payload or {})
+        for cell in company.get("cells") or []:
+            if cell.get("status") == "complete":
+                continue
+            gaps.append(
+                {
+                    "stock_code": company.get("stock_code"),
+                    "stock_name": company.get("stock_name"),
+                    "year": cell.get("year"),
+                    "report_type": cell.get("report_type"),
+                    "status": cell.get("status"),
+                    "core_hit_rate": cell.get("core_hit_rate"),
+                    "missing_required": cell.get("missing_required") or [],
+                    "missing_optional": cell.get("missing_optional") or [],
+                }
+            )
+            if len(gaps) >= limit:
+                await stream.close()
+                return gaps
+    return gaps
 
 
 def paginate_coverage_result(
