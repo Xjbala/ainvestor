@@ -880,7 +880,7 @@ class FinancialCoverageSnapshot(Base):
 
     summary: Mapped[dict] = mapped_column(JSON, comment="汇总统计")
     gap_companies: Mapped[list] = mapped_column(JSON, comment="缺口公司代码列表")
-    # 公司矩阵明细可能较大，用 LongText 兼容 MySQL
+    # 仅保留历史快照兼容数据；新快照使用 financial_coverage_snapshot_companies 保存明细。
     companies_payload: Mapped[Optional[str]] = mapped_column(
         LongText, nullable=True, comment="公司矩阵 JSON 字符串"
     )

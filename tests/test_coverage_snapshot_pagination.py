@@ -192,6 +192,7 @@ class TestCoverageSnapshotPagination(unittest.TestCase):
                     .where(FinancialCoverageSnapshotCompany.snapshot_id == snapshot.id)
                 )
 
+                self.assertIsNone(snapshot.companies_payload)
                 self.assertEqual(1, row_count)
                 self.assertTrue(await snapshot_has_company_details(session, snapshot))
         finally:

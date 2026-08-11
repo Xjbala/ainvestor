@@ -266,13 +266,16 @@ async def _save_snapshot_company_details(
     snapshot_id: int,
     companies: Sequence[Dict[str, Any]],
 ) -> None:
-    company_rows = [
-        _company_detail_from_payload(snapshot_id, company)
-        for company in companies
-        if company.get("stock_code")
-    ]
-    if company_rows:
-        session.add_all(company_rows)
+    batch_size = 100
+    for start in range(0, len(companies), batch_size):
+        company_rows = [
+            _company_detail_from_payload(snapshot_id, company)
+            for company in companies[start: start + batch_size]
+            if company.get("stock_code")
+        ]
+        if company_rows:
+            session.add_all(company_rows)
+            await session.flush()
 
 
 async def save_coverage_snapshot(
@@ -306,7 +309,8 @@ async def save_coverage_snapshot(
         coverage_rate=Decimal(str(summary.get("coverage_rate") or 0)),
         summary=summary,
         gap_companies=list(scan_result.get("gap_companies") or []),
-        companies_payload=json.dumps(scan_result.get("companies") or [], ensure_ascii=False),
+        # 明细已规范化存入 FinancialCoverageSnapshotCompany，避免整表 JSON 超过 MEDIUMTEXT 上限。
+        companies_payload=None,
         core_subjects=scan_result.get("core_subjects"),
         scan_duration_ms=int(scan_result.get("scan_duration_ms") or 0),
         created_by=created_by,
