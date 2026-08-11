@@ -10,6 +10,7 @@ export type EventType =
   | 'analysis_start'
   | 'analysis_progress'
   | 'analysis_complete'
+  | 'analysis_failed'
   | 'conference_start'
   | 'round_start'
   | 'message'

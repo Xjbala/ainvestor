@@ -39,6 +39,25 @@ class TestWebSocketStateSync(unittest.TestCase):
 
         asyncio.run(run_test())
 
+    def test_agent_failed_broadcasts_session_bound_event(self):
+        async def run_test():
+            state_sync = WebSocketStateSync(session_id="session-002")
+            state_sync.broadcast = AsyncMock(return_value=1)
+
+            await state_sync.on_agent_failed(
+                agent_id="risk_manager",
+                error="risk_assessment失败：RuntimeError: model unavailable",
+                phase="risk_assessment",
+            )
+
+            message = state_sync.broadcast.await_args.args[0]
+            self.assertEqual(message.event, EventType.ANALYSIS_FAILED)
+            self.assertEqual(message.session_id, "session-002")
+            self.assertEqual(message.data["agent_id"], "risk_manager")
+            self.assertEqual(message.data["phase"], "risk_assessment")
+
+        asyncio.run(run_test())
+
 
 if __name__ == "__main__":
     unittest.main()

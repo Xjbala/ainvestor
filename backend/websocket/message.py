@@ -35,6 +35,7 @@ class EventType(str, Enum):
     ANALYSIS_START = "analysis_start"
     ANALYSIS_PROGRESS = "analysis_progress"
     ANALYSIS_COMPLETE = "analysis_complete"
+    ANALYSIS_FAILED = "analysis_failed"
     
     # Conference events
     CONFERENCE_START = "conference_start"

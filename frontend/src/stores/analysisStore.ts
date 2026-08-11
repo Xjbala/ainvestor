@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer } from 'react';
+import { useCallback, useMemo, useReducer, useRef } from 'react';
 import type {
     AnalysisSession,
     WebSocketMessage,
@@ -40,6 +40,7 @@ type Action =
     | { type: 'AGENT_START'; payload: AgentData }
     | { type: 'AGENT_PROGRESS'; payload: AgentData }
     | { type: 'AGENT_COMPLETE'; payload: AgentData & { timestamp?: string; message_id?: string } }
+    | { type: 'AGENT_FAILED'; payload: AgentData }
     | { type: 'CONFERENCE_START' }
     | { type: 'ROUND_START'; payload: { round: number; total_rounds: number } }
     | { type: 'CONFERENCE_MESSAGE'; payload: ConferenceData & { timestamp: string; id: string } }
@@ -102,7 +103,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         id: agentId,
                         name: getAgentDisplayName(agentId),
                         status: 'analyzing',
-                        content: '',
+                        content: action.payload.content || '正在准备分析任务',
                         progress: 0,
                         phase: action.payload.phase || '',
                     },
@@ -143,6 +144,24 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                 },
                 // Removed: conferenceMessages addition to prevent duplicates
                 // Analysis phase outputs should not appear in conference feed
+            };
+        }
+
+        case 'AGENT_FAILED': {
+            const agentId = action.payload.agent_id;
+            return {
+                ...state,
+                agents: {
+                    ...state.agents,
+                    [agentId]: {
+                        id: agentId,
+                        name: getAgentDisplayName(agentId),
+                        status: 'error',
+                        content: action.payload.content || '分析执行失败',
+                        progress: 0,
+                        phase: action.payload.phase || '',
+                    },
+                },
             };
         }
 
@@ -288,6 +307,7 @@ function extractPredictionData(data: Record<string, unknown>): PredictionData {
 
 export function useAnalysisStore() {
     const [state, dispatch] = useReducer(analysisReducer, initialState);
+    const activeSessionIdRef = useRef<string | null>(null);
 
     // 处理 WebSocket 消息
     const handleMessage = useCallback((message: WebSocketMessage) => {
@@ -301,8 +321,19 @@ export function useAnalysisStore() {
             data_preview: JSON.stringify(data).substring(0, 200),
         });
 
+        if (
+            event !== 'session_start'
+            && session_id
+            && activeSessionIdRef.current
+            && session_id !== activeSessionIdRef.current
+        ) {
+            console.debug('[handleMessage] Ignoring event from another session:', session_id);
+            return;
+        }
+
         switch (event) {
             case 'session_start': {
+                activeSessionIdRef.current = session_id || null;
                 const sessionData = extractSessionData(data);
                 dispatch({
                     type: 'SESSION_START',
@@ -338,6 +369,10 @@ export function useAnalysisStore() {
                         message_id
                     }
                 });
+                break;
+
+            case 'analysis_failed':
+                dispatch({ type: 'AGENT_FAILED', payload: extractAgentData(data) });
                 break;
 
             case 'conference_start':
@@ -408,6 +443,7 @@ export function useAnalysisStore() {
     }, []);
 
     const reset = useCallback(() => {
+        activeSessionIdRef.current = null;
         dispatch({ type: 'RESET' });
     }, []);
 

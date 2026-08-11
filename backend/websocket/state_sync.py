@@ -34,9 +34,9 @@ class WebSocketStateSync:
     实现Pipeline中StateSync接口，将状态广播到所有连接的WebSocket客户端
     """
     
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None):
         self._clients: Set["WebSocketServerProtocol"] = set()
-        self._session_id: Optional[str] = None
+        self._session_id = session_id
         self._lock = asyncio.Lock()
     
     def set_session_id(self, session_id: str):
@@ -56,23 +56,38 @@ class WebSocketStateSync:
             logger.info(f"Client unregistered. Total clients: {len(self._clients)}")
     
     async def broadcast(self, message: WebSocketMessage):
-        """广播消息到所有客户端"""
+        """广播消息到当前分析会话订阅的客户端。"""
         if not self._clients:
-            return
-        
+            logger.warning(
+                "WS event dropped: session=%s event=%s agent=%s reason=no_clients",
+                message.session_id,
+                message.event.value,
+                message.data.get("agent_id", ""),
+            )
+            return 0
+
         json_message = message.to_json()
-        
+        sent_count = 0
         async with self._lock:
             disconnected = set()
             for client in self._clients:
                 try:
                     await client.send(json_message)
+                    sent_count += 1
                 except Exception as e:
-                    logger.warning(f"Failed to send message to client: {e}")
+                    logger.warning("Failed to send WS event: %s", e)
                     disconnected.add(client)
-            
-            # 清理断开的连接
             self._clients -= disconnected
+
+        logger.info(
+            "WS event broadcast: session=%s event=%s agent=%s sent=%s failed=%s",
+            message.session_id,
+            message.event.value,
+            message.data.get("agent_id", ""),
+            sent_count,
+            len(disconnected),
+        )
+        return sent_count
     
     # ========== Pipeline StateSync 接口实现 ==========
     
@@ -116,17 +131,36 @@ class WebSocketStateSync:
         )
         await self.broadcast(message)
     
-    async def on_agent_progress(self, agent_id: str, progress: float, content: str = ""):
+    async def on_agent_progress(
+        self,
+        agent_id: str,
+        progress: float,
+        content: str = "",
+        phase: str = "",
+    ):
         """Agent分析进度更新"""
         message = create_agent_message(
             session_id=self._session_id,
             agent_id=agent_id,
             event=EventType.ANALYSIS_PROGRESS,
             content=content,
+            phase=phase,
             progress=progress,
         )
         await self.broadcast(message)
     
+    async def on_agent_failed(self, agent_id: str, error: str, phase: str = ""):
+        """广播 Agent 执行失败事件。"""
+        message = create_agent_message(
+            session_id=self._session_id,
+            agent_id=agent_id,
+            event=EventType.ANALYSIS_FAILED,
+            content=error,
+            phase=phase,
+            progress=0,
+        )
+        await self.broadcast(message)
+
     async def on_conference_start(self, title: str, date: str):
         """会议开始"""
         message = create_conference_message(

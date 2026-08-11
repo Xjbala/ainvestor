@@ -34,6 +34,7 @@ from backend.api.segments import router as segments_router
 from backend.persistence.compat import get_database, close_database
 from backend.websocket.gateway import WebSocketGateway
 from backend.websocket.state_sync import WebSocketStateSync
+from backend.agents.tool_progress import with_tool_progress
 
 load_dotenv()
 
@@ -45,11 +46,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 全局变量
-state_sync = WebSocketStateSync()
 ws_gateway: WebSocketGateway = None
 
 
-def _create_analyst_toolkit(analyst_type: str):
+def _create_analyst_toolkit(
+    analyst_type: str,
+    *,
+    report_tool_progress: bool = False,
+):
     """为分析师创建工具集"""
     from agentscope.tool import Toolkit
 
@@ -61,10 +65,15 @@ def _create_analyst_toolkit(analyst_type: str):
             analyze_operating,
         )
         toolkit = Toolkit()
-        toolkit.register_tool_function(analyze_profitability)
-        toolkit.register_tool_function(analyze_growth)
-        toolkit.register_tool_function(analyze_solvency)
-        toolkit.register_tool_function(analyze_operating)
+        for tool_function in (
+            analyze_profitability,
+            analyze_growth,
+            analyze_solvency,
+            analyze_operating,
+        ):
+            toolkit.register_tool_function(
+                with_tool_progress(tool_function) if report_tool_progress else tool_function,
+            )
         return toolkit
 
     elif analyst_type == "valuation_analyst":
@@ -81,20 +90,30 @@ def _create_analyst_toolkit(analyst_type: str):
             get_industry_competition,
         )
         toolkit = Toolkit()
-        toolkit.register_tool_function(comprehensive_valuation_analysis)
-        toolkit.register_tool_function(dcf_valuation_analysis)
-        toolkit.register_tool_function(residual_income_valuation_analysis)
-        toolkit.register_tool_function(relative_valuation_analysis)
-        toolkit.register_tool_function(get_wacc_breakdown)
-        toolkit.register_tool_function(sotp_valuation_analysis)
-        toolkit.register_tool_function(get_qualitative_insights)
-        toolkit.register_tool_function(get_industry_competition)
+        for tool_function in (
+            comprehensive_valuation_analysis,
+            dcf_valuation_analysis,
+            residual_income_valuation_analysis,
+            relative_valuation_analysis,
+            get_wacc_breakdown,
+            sotp_valuation_analysis,
+            get_qualitative_insights,
+            get_industry_competition,
+        ):
+            toolkit.register_tool_function(
+                with_tool_progress(tool_function) if report_tool_progress else tool_function,
+            )
         return toolkit
 
     return []
 
 
-async def run_analysis(tickers: List[str], date: str, session_id: str):
+async def run_analysis(
+    tickers: List[str],
+    date: str,
+    session_id: str,
+    session_sync: WebSocketStateSync,
+):
     """
     运行投资分析流程
     
@@ -121,7 +140,10 @@ async def run_analysis(tickers: List[str], date: str, session_id: str):
         for analyst_type in ANALYST_TYPES:
             model = get_agent_model(analyst_type)
             formatter = get_agent_formatter(analyst_type)
-            toolkit = _create_analyst_toolkit(analyst_type)
+            toolkit = _create_analyst_toolkit(
+                analyst_type,
+                report_tool_progress=True,
+            )
             analyst = AnalystAgent(
                 analyst_type=analyst_type,
                 toolkit=toolkit,
@@ -153,14 +175,13 @@ async def run_analysis(tickers: List[str], date: str, session_id: str):
             analysts=analysts,
             risk_manager=risk_manager,
             portfolio_manager=portfolio_manager,
-            state_sync=state_sync,
+            state_sync=session_sync,
             max_comm_cycles=get_env_int("MAX_COMM_CYCLES", 2),
         )
         
         # 确保 pipeline 持有与网关一致的 session_id
         pipeline._session_id = session.id
-        if state_sync is not None:
-            state_sync.set_session_id(session.id)
+        session_sync.set_session_id(session.id)
 
         # 运行分析
         result = await pipeline.run_cycle(
@@ -181,7 +202,7 @@ async def run_analysis(tickers: List[str], date: str, session_id: str):
                 logger.error(f"Failed to save report for session={session.id}: {e}", exc_info=True)
 
             try:
-                await state_sync.on_report_generated(result["rating_report"])
+                await session_sync.on_report_generated(result["rating_report"])
             except Exception as e:
                 logger.error(f"Failed to broadcast report for session={session.id}: {e}", exc_info=True)
 
@@ -213,7 +234,6 @@ async def lifespan(app: FastAPI):
     ws_gateway = WebSocketGateway(
         host="0.0.0.0",
         port=int(os.getenv("WS_PORT", "8765")),
-        state_sync=state_sync,
     )
     ws_gateway.set_analysis_handler(run_analysis)
     

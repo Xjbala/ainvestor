@@ -62,10 +62,16 @@ function App() {
 
   // Track if we've connected before to detect reconnections
   const hasConnectedBefore = useRef(false);
+  const hasLiveSession = useRef(false);
 
   const { connect, send } = useWebSocket({
     url: WS_URL,
-    onMessage: handleMessage,
+    onMessage: (message) => {
+      if (message.event === 'session_start') {
+        hasLiveSession.current = true;
+      }
+      handleMessage(message);
+    },
     onOpen: () => {
       console.log('Connected to analysis server');
       if (hasConnectedBefore.current && state.status === 'running') {
@@ -107,6 +113,11 @@ function App() {
         }
         const sessions = await res.json();
         console.log('[Session Restore] Sessions response:', sessions);
+
+        if (hasLiveSession.current) {
+          console.log('[Session Restore] Live WebSocket session started, skipping restore');
+          return;
+        }
 
         if (sessions && sessions.length > 0) {
           const session = sessions[0];
@@ -174,14 +185,20 @@ function App() {
     };
 
     const agentMessages = agentList
-      .filter(agent => agent.status !== 'idle' && agent.status !== 'error' && agent.content)
+      .filter(agent => agent.status !== 'idle' && agent.content)
       .map(agent => ({
         id: `agent-${agent.id}`,
         agentId: agent.id,
         agentName: agent.name || getDisplayName(agent.id),
         content: agent.content || '',
         timestamp: new Date().toISOString(),
-        type: (agent.status === 'analyzing' ? 'info' : 'success') as 'info' | 'success',
+        type: (
+          agent.status === 'error'
+            ? 'alert'
+            : agent.status === 'analyzing'
+              ? 'info'
+              : 'success'
+        ) as 'info' | 'success' | 'alert',
       }));
 
     const confMessages = state.conferenceMessages.map(msg => ({

@@ -18,6 +18,7 @@ from agentscope.message import Msg
 from agentscope.pipeline import MsgHub
 
 from ..persistence.compat import get_database
+from ..agents.tool_progress import tool_progress_scope
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +90,24 @@ class StateSync:
         """Agent完成时的回调"""
         _log(f"Agent {agent_id} completed")
     
+    async def on_agent_start(self, agent_id: str, phase: str = ""):
+        """Agent 开始时的回调。"""
+        _log(f"Agent {agent_id} started: {phase}")
+
+    async def on_agent_progress(
+        self,
+        agent_id: str,
+        progress: float,
+        content: str = "",
+        phase: str = "",
+    ):
+        """Agent 进度更新的回调。"""
+        _log(f"Agent {agent_id} progress {progress:.0f}%: {content}")
+
+    async def on_agent_failed(self, agent_id: str, error: str, phase: str = ""):
+        """Agent 执行失败时的回调。"""
+        _log(f"Agent {agent_id} failed in {phase}: {error}")
+
     async def on_conference_start(self, title: str, date: str):
         """会议开始时的回调"""
         _log(f"Conference started: {title}")
@@ -144,6 +163,64 @@ class RatingPipeline:
         )
         self.conference_summary = None
         self._session_id: Optional[str] = None
+
+    async def _reply_with_lifecycle(
+        self,
+        agent: Any,
+        message: Msg,
+        *,
+        phase: str,
+    ) -> Msg:
+        """执行 Agent 回复并同步开始、工具和失败状态。"""
+        agent_id = agent.name
+        if self.state_sync:
+            await self.state_sync.on_agent_start(agent_id=agent_id, phase=phase)
+            await self.state_sync.on_agent_progress(
+                agent_id=agent_id,
+                progress=10,
+                content="正在准备分析上下文并等待模型响应",
+                phase=phase,
+            )
+
+        async def _on_tool_progress(tool_name: str, status: str) -> None:
+            if not self.state_sync:
+                return
+            labels = {
+                "started": "正在调用工具",
+                "completed": "工具已返回，正在整理分析结果",
+                "failed": "工具调用失败，正在调整分析路径",
+            }
+            progress = {"started": 35, "completed": 65, "failed": 45}[status]
+            await self.state_sync.on_agent_progress(
+                agent_id=agent_id,
+                progress=progress,
+                content=f"{labels[status]}：{tool_name}",
+                phase=phase,
+            )
+
+        try:
+            with tool_progress_scope(_on_tool_progress):
+                result = await _retry_with_backoff(
+                    lambda: agent.reply(message),
+                    max_retries=3,
+                )
+        except Exception as exc:
+            if self.state_sync:
+                await self.state_sync.on_agent_failed(
+                    agent_id=agent_id,
+                    error=f"{phase}失败：{type(exc).__name__}: {exc}",
+                    phase=phase,
+                )
+            raise
+
+        if self.state_sync:
+            await self.state_sync.on_agent_progress(
+                agent_id=agent_id,
+                progress=90,
+                content="模型回复已完成，正在生成结构化结果",
+                phase=phase,
+            )
+        return result
 
     async def _persist_agent_output(
         self,
@@ -334,7 +411,7 @@ class RatingPipeline:
 
         for result in analyst_results:
             agent = result.get("agent", "Unknown")
-            summary = _clean(result.get("content", ""), limit=800)
+            summary = _clean(result.get("content", ""))
             lines.append(f"### {agent}")
             lines.append(summary or "（无有效文本输出）")
             lines.append("")
@@ -621,9 +698,10 @@ class RatingPipeline:
             )
 
             pm_msg = Msg(name="system", content=pm_prompt, role="user")
-            pm_response = await _retry_with_backoff(
-                lambda: self.pm.reply(pm_msg),
-                max_retries=3,
+            pm_response = await self._reply_with_lifecycle(
+                self.pm,
+                pm_msg,
+                phase="conference",
             )
 
             if self.state_sync:
@@ -648,9 +726,10 @@ class RatingPipeline:
                     content=analyst_prompt,
                     role="user",
                 )
-                analyst_response = await _retry_with_backoff(
-                    lambda a=analyst, m=analyst_msg: a.reply(m),
-                    max_retries=3,
+                analyst_response = await self._reply_with_lifecycle(
+                    analyst,
+                    analyst_msg,
+                    phase="conference",
                 )
 
                 if self.state_sync:
@@ -677,9 +756,10 @@ class RatingPipeline:
             f"5. 初步倾向：基于现有信息，给出综合投资方向判断（强烈推荐/推荐/中性/谨慎/回避）及理由"
         )
         summary_msg = Msg(name="system", content=summary_prompt, role="user")
-        summary_response = await _retry_with_backoff(
-            lambda: self.pm.reply(summary_msg),
-            max_retries=3,
+        summary_response = await self._reply_with_lifecycle(
+            self.pm,
+            summary_msg,
+            phase="conference_summary",
         )
 
         conference_summary = self._extract_text_content(summary_response.content)
@@ -814,9 +894,10 @@ class RatingPipeline:
             )
 
             msg = Msg(name="system", content=prompt, role="user")
-            response = await _retry_with_backoff(
-                lambda a=analyst, m=msg: a.reply(m),
-                max_retries=3,
+            response = await self._reply_with_lifecycle(
+                analyst,
+                msg,
+                phase="prediction",
             )
 
             content = self._extract_text_content(response.content)
@@ -961,9 +1042,10 @@ class RatingPipeline:
                 metadata={"tickers": tickers, "date": date},
             )
 
-            result = await _retry_with_backoff(
-                lambda a=analyst, m=msg: a.reply(m),
-                max_retries=3,
+            result = await self._reply_with_lifecycle(
+                analyst,
+                msg,
+                phase="analysis",
             )
             extracted = self._extract_result_from_msg(result)
             results.append(extracted)
@@ -1017,9 +1099,10 @@ class RatingPipeline:
         )
 
         msg = Msg(name="system", content=content, role="user")
-        result = await _retry_with_backoff(
-            lambda: self.risk_manager.reply(msg),
-            max_retries=3,
+        result = await self._reply_with_lifecycle(
+            self.risk_manager,
+            msg,
+            phase="risk_assessment",
         )
         extracted = self._extract_result_from_msg(result)
 
@@ -1104,9 +1187,10 @@ class RatingPipeline:
         )
 
         msg = Msg(name="system", content=content, role="user")
-        result = await _retry_with_backoff(
-            lambda: self.pm.reply(msg),
-            max_retries=3,
+        result = await self._reply_with_lifecycle(
+            self.pm,
+            msg,
+            phase="investment_recommendation",
         )
         extracted = self._extract_result_from_msg(result)
 
@@ -1430,6 +1514,17 @@ class RatingPipeline:
         if block_pat.search(raw):
             raw = block_pat.sub(_replace_block, raw)
 
+        # 2.5) 截断的内容块：闭合 '}] 丢失（800字截断导致）
+        # 用宽松正则提取 text 字段中的内容，不要求闭合
+        truncated_pat = re.compile(
+            r"\[\s*,?\s*\{[\s\S]*?['\"]type['\"]\s*:\s*['\"]text['\"]\s*,\s*['\"]text['\"]\s*:\s*['\"]([\s\S]*?)(?:['\"]\s*\}|\Z)"
+        )
+        if truncated_pat.search(raw):
+            def _replace_truncated(m: re.Match) -> str:
+                content = self._unescape_common(m.group(1))
+                return "\n" + content + "\n" if content else ""
+            raw = truncated_pat.sub(_replace_truncated, raw)
+
         # 3) 仍残留 type/text 结构时，抓所有 text 段
         if re.search(r"['\"]type['\"]\s*:", raw) and re.search(r"['\"]text['\"]\s*:", raw):
             text_chunks = re.findall(
@@ -1438,6 +1533,14 @@ class RatingPipeline:
             )
             if text_chunks:
                 return "\n\n".join(self._unescape_common(c) for c in text_chunks).strip()
+
+            # 截断场景：text 字段没有闭合引号，取到行尾
+            loose_truncated = re.findall(
+                r"['\"]type['\"]\s*:\s*['\"]text['\"]\s*,\s*['\"]text['\"]\s*:\s*['\"]([\s\S]*?)\Z",
+                raw,
+            )
+            if loose_truncated:
+                return "\n\n".join(self._unescape_common(c) for c in loose_truncated).strip()
 
             loose = re.findall(
                 r"['\"]text['\"]\s*:\s*['\"]([\s\S]*?)['\"]\s*(?:,|\})",
