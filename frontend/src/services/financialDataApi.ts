@@ -140,6 +140,7 @@ export interface FinancialCoverageResponse {
     scanned_at?: string | null;
     scan_duration_ms?: number | null;
     source?: string | null;
+    pagination_source?: 'snapshot_sql' | 'legacy_snapshot_json' | 'snapshot_created' | 'online_scan';
     scope_key?: string | null;
     status_filter?: string;
 }

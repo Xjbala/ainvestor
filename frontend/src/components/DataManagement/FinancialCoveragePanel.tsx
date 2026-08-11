@@ -107,8 +107,11 @@ export const FinancialCoveragePanel: React.FC<{
             setData(res);
             setSelected(new Set());
             if (res.from_snapshot && res.scanned_at) {
+                const paginationSource = res.pagination_source === 'snapshot_sql'
+                    ? 'SQL 分页'
+                    : '快照 JSON';
                 setSnapshotHint(
-                    `快照 #${res.snapshot_id ?? '-'} · ${res.scanned_at.replace('T', ' ').slice(0, 19)} · ${res.source || 'snapshot'}`,
+                    `快照 #${res.snapshot_id ?? '-'} · ${paginationSource} · ${res.scanned_at.replace('T', ' ').slice(0, 19)} · ${res.source || 'snapshot'}`,
                 );
             } else if (res.scan_duration_ms != null) {
                 setSnapshotHint(`在线扫描 · ${res.scan_duration_ms}ms`);

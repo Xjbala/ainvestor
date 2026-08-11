@@ -36,8 +36,10 @@ from ..analysis.financial_validation import (
 from ..analysis.coverage_service import (
     default_coverage_years,
     normalize_report_types,
+    backfill_snapshot_company_details,
     build_scope_key,
     extract_gap_items,
+    get_or_create_full_scope_snapshot,
     scan_coverage,
     scan_and_save,
     get_latest_snapshot,
@@ -272,7 +274,10 @@ async def get_financial_coverage(
             status_filter=status_filter,
             include_payload=False,
         )
-        if snap and await snapshot_has_company_details(session, snap):
+        if snap and (
+            await snapshot_has_company_details(session, snap)
+            or await backfill_snapshot_company_details(session, snap)
+        ):
             return await paginate_snapshot_companies(
                 session,
                 snap,
@@ -282,17 +287,29 @@ async def get_financial_coverage(
                 include_cells=include_cells,
                 search=search,
             )
-        if snap:
-            await session.refresh(snap, attribute_names=["companies_payload"])
-            raw = snapshot_to_dict(snap, include_companies=True)
-            raw["status_filter"] = status_filter
-        else:
+        if has_search:
             raw = await scan_coverage(
                 session,
                 years=year_list,
                 report_types=rt_list,
                 status_filter=status_filter,
-                search=search if has_search else None,
+                search=search,
+            )
+        else:
+            snap = await get_or_create_full_scope_snapshot(
+                session,
+                years=year_list,
+                report_types=rt_list,
+                status_filter=status_filter,
+            )
+            return await paginate_snapshot_companies(
+                session,
+                snap,
+                only_gaps=only_gaps,
+                page=page,
+                page_size=page_size,
+                include_cells=include_cells,
+                search=None,
             )
     else:
         raw = await scan_coverage(
@@ -420,7 +437,10 @@ async def get_financial_coverage_snapshot(
     snap = (await session.execute(stmt)).scalar_one_or_none()
     if not snap:
         raise HTTPException(status_code=404, detail="快照不存在")
-    if await snapshot_has_company_details(session, snap):
+    if await snapshot_has_company_details(session, snap) or await backfill_snapshot_company_details(
+        session,
+        snap,
+    ):
         return await paginate_snapshot_companies(
             session,
             snap,
@@ -474,7 +494,10 @@ async def get_financial_gaps(
             include_payload=False,
         )
 
-    if snap and await snapshot_has_company_details(session, snap):
+    if snap and (
+        await snapshot_has_company_details(session, snap)
+        or await backfill_snapshot_company_details(session, snap)
+    ):
         gaps = await get_snapshot_gap_items(
             session,
             snap,
@@ -488,6 +511,7 @@ async def get_financial_gaps(
             "from_snapshot": True,
             "snapshot_id": snap.id,
             "scanned_at": snap.created_at.isoformat() if snap.created_at else None,
+            "pagination_source": "snapshot_sql",
         }
     else:
         raw = await scan_coverage(
@@ -506,6 +530,7 @@ async def get_financial_gaps(
             "from_snapshot": False,
             "snapshot_id": None,
             "scanned_at": None,
+            "pagination_source": "online_scan",
         }
 
     repair_targets: Dict[str, Dict[str, Any]] = {}
@@ -548,6 +573,7 @@ async def get_financial_gaps(
         "from_snapshot": coverage_meta.get("from_snapshot"),
         "snapshot_id": coverage_meta.get("snapshot_id"),
         "scanned_at": coverage_meta.get("scanned_at"),
+        "pagination_source": coverage_meta.get("pagination_source"),
     }
 
 

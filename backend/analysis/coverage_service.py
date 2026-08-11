@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -38,6 +39,13 @@ from .financial_validation import (
 )
 
 logger = logging.getLogger(__name__)
+_snapshot_scan_locks: Dict[str, asyncio.Lock] = {}
+_snapshot_scan_locks_guard = asyncio.Lock()
+
+
+async def _get_snapshot_scan_lock(scope_key: str) -> asyncio.Lock:
+    async with _snapshot_scan_locks_guard:
+        return _snapshot_scan_locks.setdefault(scope_key, asyncio.Lock())
 
 
 def default_coverage_years(years: Optional[Sequence[int]] = None) -> List[int]:
@@ -235,6 +243,38 @@ async def scan_coverage(
     }
 
 
+def _company_detail_from_payload(
+    snapshot_id: int,
+    company: Dict[str, Any],
+) -> FinancialCoverageSnapshotCompany:
+    return FinancialCoverageSnapshotCompany(
+        snapshot_id=snapshot_id,
+        stock_code=str(company.get("stock_code") or ""),
+        stock_name=str(company.get("stock_name") or company.get("stock_code") or ""),
+        overall_status=str(company.get("overall_status") or "missing"),
+        coverage_rate=Decimal(str(company.get("coverage_rate") or 0)),
+        complete_cells=int(company.get("complete_cells") or 0),
+        partial_cells=int(company.get("partial_cells") or 0),
+        missing_cells=int(company.get("missing_cells") or 0),
+        expected_cells=int(company.get("expected_cells") or 0),
+        company_payload=company,
+    )
+
+
+async def _save_snapshot_company_details(
+    session: AsyncSession,
+    snapshot_id: int,
+    companies: Sequence[Dict[str, Any]],
+) -> None:
+    company_rows = [
+        _company_detail_from_payload(snapshot_id, company)
+        for company in companies
+        if company.get("stock_code")
+    ]
+    if company_rows:
+        session.add_all(company_rows)
+
+
 async def save_coverage_snapshot(
     session: AsyncSession,
     scan_result: Dict[str, Any],
@@ -274,24 +314,11 @@ async def save_coverage_snapshot(
     session.add(snap)
     await session.flush()
 
-    company_rows = []
-    for company in scan_result.get("companies") or []:
-        company_rows.append(
-            FinancialCoverageSnapshotCompany(
-                snapshot_id=snap.id,
-                stock_code=str(company.get("stock_code") or ""),
-                stock_name=str(company.get("stock_name") or company.get("stock_code") or ""),
-                overall_status=str(company.get("overall_status") or "missing"),
-                coverage_rate=Decimal(str(company.get("coverage_rate") or 0)),
-                complete_cells=int(company.get("complete_cells") or 0),
-                partial_cells=int(company.get("partial_cells") or 0),
-                missing_cells=int(company.get("missing_cells") or 0),
-                expected_cells=int(company.get("expected_cells") or 0),
-                company_payload=company,
-            )
-        )
-    if company_rows:
-        session.add_all(company_rows)
+    await _save_snapshot_company_details(
+        session,
+        snap.id,
+        scan_result.get("companies") or [],
+    )
 
     await session.commit()
     await session.refresh(snap)
@@ -324,6 +351,7 @@ def snapshot_to_dict(
         "report_types": snap.report_types or [],
         "status_filter": snap.status_filter,
         "source": snap.source,
+        "pagination_source": "legacy_snapshot_json",
         "trigger_task_id": snap.trigger_task_id,
         "summary": snap.summary or {},
         "gap_companies": snap.gap_companies or [],
@@ -404,6 +432,7 @@ async def scan_and_save(
         result["from_snapshot"] = False
         result["snapshot_id"] = None
         result["scanned_at"] = None
+        result["pagination_source"] = "online_scan"
         result["partial_scope"] = True
         return result
 
@@ -418,6 +447,7 @@ async def scan_and_save(
     result["snapshot_id"] = snap.id
     result["scanned_at"] = snap.created_at.isoformat() if snap.created_at else None
     result["source"] = source
+    result["pagination_source"] = "snapshot_created"
     result["partial_scope"] = False
     return result
 
@@ -437,6 +467,81 @@ async def snapshot_has_company_details(
     return (await session.execute(stmt)).scalar_one_or_none() is not None
 
 
+async def backfill_snapshot_company_details(
+    session: AsyncSession,
+    snapshot: FinancialCoverageSnapshot,
+) -> bool:
+    """将历史 JSON 快照转换为可分页的公司明细。"""
+    if await snapshot_has_company_details(session, snapshot):
+        return True
+
+    lock = await _get_snapshot_scan_lock(f"snapshot:{snapshot.id}")
+    async with lock:
+        if await snapshot_has_company_details(session, snapshot):
+            return True
+        await session.refresh(snapshot, attribute_names=["companies_payload"])
+        try:
+            companies = json.loads(snapshot.companies_payload or "[]")
+        except json.JSONDecodeError:
+            logger.warning("Coverage snapshot id=%s has invalid company payload", snapshot.id)
+            return False
+        if not isinstance(companies, list):
+            logger.warning("Coverage snapshot id=%s has non-list company payload", snapshot.id)
+            return False
+        if snapshot.company_count and not companies:
+            logger.warning("Coverage snapshot id=%s has empty company payload", snapshot.id)
+            return False
+
+        await _save_snapshot_company_details(session, snapshot.id, companies)
+        await session.commit()
+        logger.info(
+            "Backfilled coverage snapshot id=%s with %s company details",
+            snapshot.id,
+            len(companies),
+        )
+        return True
+
+
+async def get_or_create_full_scope_snapshot(
+    session: AsyncSession,
+    *,
+    years: Sequence[int],
+    report_types: Sequence[str],
+    status_filter: str,
+) -> FinancialCoverageSnapshot:
+    """获取全市场快照；缺失或不可回填时扫描并创建新快照。"""
+    scope_key = build_scope_key(years, report_types, status_filter)
+    lock = await _get_snapshot_scan_lock(scope_key)
+    async with lock:
+        snapshot = await get_latest_snapshot(
+            session,
+            scope_key=scope_key,
+            include_payload=False,
+        )
+        if snapshot and await backfill_snapshot_company_details(session, snapshot):
+            return snapshot
+
+        if snapshot:
+            logger.warning(
+                "Coverage snapshot id=%s cannot be paginated; creating a replacement",
+                snapshot.id,
+            )
+        result = await scan_and_save(
+            session,
+            years=years,
+            report_types=report_types,
+            status_filter=status_filter,
+            source="auto_snapshot",
+        )
+        snapshot_id = result.get("snapshot_id")
+        if not snapshot_id:
+            raise RuntimeError(f"Failed to persist coverage snapshot for scope {scope_key}")
+        snapshot = await session.get(FinancialCoverageSnapshot, snapshot_id)
+        if not snapshot:
+            raise RuntimeError(f"Coverage snapshot {snapshot_id} was not found after creation")
+        return snapshot
+
+
 def _snapshot_response_base(snapshot: FinancialCoverageSnapshot) -> Dict[str, Any]:
     return {
         "years": snapshot.years or [],
@@ -451,6 +556,7 @@ def _snapshot_response_base(snapshot: FinancialCoverageSnapshot) -> Dict[str, An
         "scanned_at": snapshot.created_at.isoformat() if snapshot.created_at else None,
         "scan_duration_ms": snapshot.scan_duration_ms or 0,
         "source": snapshot.source,
+        "pagination_source": "snapshot_sql",
         "scope_key": snapshot.scope_key,
     }
 
@@ -625,6 +731,7 @@ def paginate_coverage_result(
         "scanned_at": result.get("scanned_at"),
         "scan_duration_ms": result.get("scan_duration_ms"),
         "source": result.get("source"),
+        "pagination_source": result.get("pagination_source") or "online_scan",
         "scope_key": result.get("scope_key"),
     }
 

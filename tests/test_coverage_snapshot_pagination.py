@@ -5,6 +5,7 @@ import asyncio
 import os
 import sys
 import unittest
+from unittest.mock import AsyncMock, patch
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.analysis.coverage_service import (
+    backfill_snapshot_company_details,
+    get_or_create_full_scope_snapshot,
     get_snapshot_gap_items,
     paginate_snapshot_companies,
     save_coverage_snapshot,
@@ -26,6 +29,116 @@ from backend.persistence.financial_models import (
 
 
 class TestCoverageSnapshotPagination(unittest.TestCase):
+    def test_missing_full_scope_creates_and_reuses_snapshot(self):
+        asyncio.run(self._test_missing_full_scope_creates_and_reuses_snapshot())
+
+    async def _test_missing_full_scope_creates_and_reuses_snapshot(self):
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        scan_result = {
+            "scope_key": "2024|BS|active",
+            "years": [2024],
+            "report_types": ["BS"],
+            "status_filter": "active",
+            "summary": {
+                "company_count": 1,
+                "matrix_total": 1,
+                "complete_cells": 0,
+                "partial_cells": 1,
+                "missing_cells": 0,
+                "gap_company_count": 1,
+                "coverage_rate": 0,
+            },
+            "gap_companies": ["000002"],
+            "core_subjects": {},
+            "scan_duration_ms": 1,
+            "companies": [
+                self._company_detail(0, "000002", "部分公司", "partial").company_payload
+            ],
+        }
+        try:
+            async with engine.begin() as connection:
+                await connection.run_sync(
+                    Base.metadata.create_all,
+                    tables=[
+                        FinancialCoverageSnapshot.__table__,
+                        FinancialCoverageSnapshotCompany.__table__,
+                    ],
+                )
+
+            async with session_factory() as session:
+                with patch(
+                    "backend.analysis.coverage_service.scan_coverage",
+                    new=AsyncMock(return_value=scan_result),
+                ) as scan_coverage:
+                    first = await get_or_create_full_scope_snapshot(
+                        session,
+                        years=[2024],
+                        report_types=["BS"],
+                        status_filter="active",
+                    )
+                    second = await get_or_create_full_scope_snapshot(
+                        session,
+                        years=[2024],
+                        report_types=["BS"],
+                        status_filter="active",
+                    )
+
+                self.assertEqual(first.id, second.id)
+                self.assertEqual(1, scan_coverage.await_count)
+                self.assertTrue(await snapshot_has_company_details(session, first))
+        finally:
+            await engine.dispose()
+
+    def test_legacy_snapshot_backfills_company_details(self):
+        asyncio.run(self._test_legacy_snapshot_backfills_company_details())
+
+    async def _test_legacy_snapshot_backfills_company_details(self):
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        session_factory = async_sessionmaker(engine, expire_on_commit=False)
+        try:
+            async with engine.begin() as connection:
+                await connection.run_sync(
+                    Base.metadata.create_all,
+                    tables=[
+                        FinancialCoverageSnapshot.__table__,
+                        FinancialCoverageSnapshotCompany.__table__,
+                    ],
+                )
+
+            async with session_factory() as session:
+                snapshot = FinancialCoverageSnapshot(
+                    scope_key="2024|BS|active",
+                    years=[2024],
+                    report_types=["BS"],
+                    status_filter="active",
+                    source="legacy",
+                    company_count=1,
+                    matrix_total=1,
+                    complete_cells=0,
+                    partial_cells=1,
+                    missing_cells=0,
+                    gap_company_count=1,
+                    coverage_rate=0,
+                    summary={"company_count": 1},
+                    gap_companies=["000002"],
+                    companies_payload=(
+                        '[{"stock_code":"000002","stock_name":"部分公司",'
+                        '"overall_status":"partial","coverage_rate":0,'
+                        '"complete_cells":0,"partial_cells":1,"missing_cells":0,'
+                        '"expected_cells":1,"cells":[]}]'
+                    ),
+                    core_subjects={},
+                )
+                session.add(snapshot)
+                await session.commit()
+
+                self.assertFalse(await snapshot_has_company_details(session, snapshot))
+                self.assertTrue(await backfill_snapshot_company_details(session, snapshot))
+                self.assertTrue(await snapshot_has_company_details(session, snapshot))
+        finally:
+            await engine.dispose()
+
     def test_save_snapshot_writes_company_details(self):
         asyncio.run(self._test_save_snapshot_writes_company_details())
 
