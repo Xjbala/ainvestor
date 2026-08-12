@@ -1,0 +1,104 @@
+{
+  "pass": 6,
+  "warn": 0,
+  "fail": 1,
+  "cases": [
+    {
+      "id": "PoC-A",
+      "status": "pass",
+      "title": "Custom Python tool via FunctionTool + Toolkit.add_tool",
+      "detail": "schemas names=['spike_add']",
+      "evidence": {
+        "schemas": [
+          {
+            "type": "function",
+            "function": {
+              "name": "spike_add",
+              "description": "Add two integers for spike PoC-A.",
+              "parameters": {
+                "properties": {
+                  "a": {
+                    "type": "integer"
+                  },
+                  "b": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "a",
+                  "b"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "PoC-A2",
+      "status": "fail",
+      "title": "1.x register_tool_function still works",
+      "detail": "register_tool_function removed",
+      "evidence": {
+        "bare_ok": false
+      }
+    },
+    {
+      "id": "PoC-B",
+      "status": "pass",
+      "title": "Message text extraction",
+      "detail": "user=True msg=True; ThinkingBlock skip (1 validation error for ThinkingBlock\nthinking\n  Field required [type=missing, input_value={'text': 'secret chain'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing)",
+      "evidence": {
+        "user_text": "关注经营性现金流",
+        "msg_text": "hello blocks",
+        "classic_str_content": false,
+        "classic_err": "ValidationError: 1 validation error for Msg\ncontent\n  Input should be a valid list [type=list_type, input_value='plain string', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type"
+      }
+    },
+    {
+      "id": "PoC-C",
+      "status": "pass",
+      "title": "Multi-agent share without MsgHub (manual context inject)",
+      "detail": "pipeline_module=False; transcript=['pm: 请评估贵州茅台现金流质量', 'fundamentals: 经营现金流稳健，但增速放缓']; pm_ctx=2 analyst_ctx=2",
+      "evidence": {
+        "has_agentscope_pipeline": false,
+        "strategy": "ManualHub + AgentState.context append / Agent.observe",
+        "transcript": [
+          "pm: 请评估贵州茅台现金流质量",
+          "fundamentals: 经营现金流稳健，但增速放缓"
+        ]
+      }
+    },
+    {
+      "id": "PoC-C2",
+      "status": "pass",
+      "title": "Agent.observe available for cross-agent injection",
+      "detail": "observe=True sig=(self, msgs: agentscope.message._base.Msg | list[agentscope.message._base.Msg] | None = None) -> None",
+      "evidence": {}
+    },
+    {
+      "id": "PoC-D",
+      "status": "pass",
+      "title": "Subclass Agent",
+      "detail": "mro=['Agent', 'object']; class body ok",
+      "evidence": {
+        "mro": [
+          "Agent",
+          "object"
+        ],
+        "note": "Subclass possible but 1.x hooks (sys_prompt/formatter/memory kwargs) gone",
+        "new_ctor": "(self, name: str, system_prompt: str, model: agentscope.model._base.ChatModelBase, toolkit: agentscope.tool._toolkit.Toolkit | None = None, middlewares: list[typing.Any] | None = None, state: agentscope.state._state.AgentState | None = None, offloader: agentscope.workspace._offload_protocol.Offloader | None = None, model_config: agentscope.agent._config.ModelConfig | None = None, context_config: agentscope.agent._config.ContextConfig | None = None, react_config: agentscope.agent._config.ReActConfig | None = None, injection_config: agentscope.agent._config.InjectionConfig | None = None) -> None"
+      }
+    },
+    {
+      "id": "PoC-MEM",
+      "status": "pass",
+      "title": "Phase0 memory clear via AgentState.context=[]",
+      "detail": "InMemoryMemory module absent; use AgentState.context reset",
+      "evidence": {
+        "has_inmemory": false
+      }
+    }
+  ]
+}

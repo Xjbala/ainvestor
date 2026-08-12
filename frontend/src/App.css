@@ -1,332 +1,143 @@
 /**
- * App - 全局样式（FinTech Futurism 风格）
+ * App 全局样式 —— Golden Time 浅色主题
  *
- * 统一的全局样式和动画
+ * 保留全局动画与少量工具类，颜色/间距/圆角统一走 design-tokens.css。
+ * 旧 FinTech「幽灵 token」已由 design-tokens.css 的兼容映射层接管。
  */
 
 /* ========================================
-   CSS Variables - FinTech Theme
-   ======================================== */
-:root {
-    /* Mapped to new Design Tokens */
-    --bg-primary: var(--color-base-900);
-    --bg-secondary: var(--color-base-800);
-    --bg-tertiary: var(--color-base-700);
-    --bg-card: var(--glass-bg);
-
-    /* Accent Colors */
-    --accent-primary: var(--color-accent-secondary);
-    --accent-secondary: var(--color-accent-primary);
-    --accent-success: var(--color-success);
-    --accent-warning: var(--color-warning);
-    --accent-danger: var(--color-error);
-
-    /* Text Colors */
-    --text-primary: var(--color-base-100);
-    --text-secondary: var(--color-text-muted);
-    --text-muted: #52525B;
-
-    /* Border Colors */
-    --border-primary: var(--color-border);
-    --border-accent: rgba(59, 130, 246, 0.2);
-
-    /* Glow Effects - Refined */
-    --glow-primary: rgba(59, 130, 246, 0.15);
-    --glow-secondary: rgba(245, 158, 11, 0.15);
-    --glow-success: rgba(16, 185, 129, 0.15);
-
-    /* Spacing */
-    --spacing-xs: var(--space-xs);
-    --spacing-sm: var(--space-sm);
-    --spacing-md: var(--space-md);
-    --spacing-lg: var(--space-lg);
-    --spacing-xl: var(--space-xl);
-
-    /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --radius-full: 9999px;
-}
-
-/* ========================================
-   Global Reset
+   全局重置
    ======================================== */
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 html,
 body {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    overflow-x: hidden;
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 /* ========================================
-   Scrollbar Styling
+   工具类
    ======================================== */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+
+/* 文字渐变：品牌棕金 */
+.text-gradient {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-::-webkit-scrollbar-track {
-    background: var(--color-base-950);
+/* 卡片表面：浅色下用 card 底 + 边框，不再用玻璃模糊 */
+.surface-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-::-webkit-scrollbar-thumb {
-    background: var(--color-base-700);
-    border-radius: 3px;
+/* 编辑性标题：serif 字体用于强调瞬间 */
+.font-editorial {
+  font-family: var(--font-serif);
 }
 
-::-webkit-scrollbar-thumb:hover {
-    background: var(--color-accent-primary);
+/* 数据/标签：等宽 */
+.font-data {
+  font-family: var(--font-mono);
 }
 
 /* ========================================
-   Typography
+   动画关键帧（全局复用）
    ======================================== */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-weight: 700;
-    line-height: 1.2;
+@keyframes app-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-p {
-    line-height: 1.6;
+@keyframes app-slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-a {
-    color: var(--accent-primary);
-    text-decoration: none;
-    transition: all 0.2s ease;
+@keyframes app-slideIn {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
 }
 
-a:hover {
-    color: var(--accent-secondary);
+@keyframes app-scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-/* ========================================
-   Animation Utilities
-   ======================================== */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-
-    to {
-        opacity: 1;
-    }
+@keyframes app-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.97); }
 }
 
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+@keyframes app-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-@keyframes pulse {
-
-    0%,
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-
-    50% {
-        opacity: 0.8;
-        transform: scale(0.95);
-    }
-}
-
-@keyframes glow {
-
-    0%,
-    100% {
-        box-shadow: 0 0 20px var(--glow-primary);
-    }
-
-    50% {
-        box-shadow: 0 0 40px var(--glow-primary);
-    }
-}
-
-@keyframes rotate {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-
-    50% {
-        transform: translateY(-10px);
-    }
+@keyframes app-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
 }
 
 /* ========================================
-   Toast Notifications
+   Toast 通知（兜底样式，组件内已用 Tailwind 类）
    ======================================== */
 .toast {
-    position: fixed;
-    bottom: 32px;
-    right: 32px;
-    padding: 16px 24px;
-    background: rgba(22, 27, 34, 0.95);
-    border: 1px solid var(--border-primary);
-    border-radius: var(--radius-lg);
-    color: var(--text-primary);
-    box-shadow:
-        0 10px 40px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(0, 240, 255, 0.1);
-    animation: slideUp 0.3s ease;
-    z-index: 1000;
-    backdrop-filter: blur(10px);
-}
-
-.toast.success {
-    border-color: rgba(16, 185, 129, 0.3);
-}
-
-.toast.error {
-    border-color: rgba(239, 68, 68, 0.3);
-}
-
-.toast.info {
-    border-color: rgba(0, 240, 255, 0.3);
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  padding: 16px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--foreground);
+  animation: app-slideUp 0.3s ease;
+  z-index: 1000;
 }
 
 /* ========================================
-   Expert Mode Layout
-   ======================================== */
-.app-main.expert-mode {
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-    min-height: 100vh;
-}
-
-/* ========================================
-   Utility Classes
-   ======================================== */
-.text-gradient {
-    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
-
-.glow-effect {
-    box-shadow: 0 0 20px var(--glow-primary);
-}
-
-.glass-effect {
-    background: var(--bg-card);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--border-primary);
-}
-
-/* ========================================
-   Selection Styling
-   ======================================== */
-::selection {
-    background: rgba(0, 240, 255, 0.2);
-    color: var(--text-primary);
-}
-
-/* ========================================
-   Focus Styles
-   ======================================== */
-:focus-visible {
-    outline: 2px solid var(--accent-primary);
-    outline-offset: 2px;
-}
-
-/* ========================================
-   Loading States
+   加载态
    ======================================== */
 .loading {
-    pointer-events: none;
-    opacity: 0.6;
+  pointer-events: none;
+  opacity: 0.6;
+  position: relative;
 }
 
 .loading::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg,
-            transparent 0%,
-            rgba(0, 240, 255, 0.1) 50%,
-            transparent 100%);
-    animation: loading 1.5s infinite;
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+      transparent 0%,
+      var(--brand-200) 50%,
+      transparent 100%);
+  animation: app-loading 1.5s infinite;
 }
 
-@keyframes loading {
-    0% {
-        transform: translateX(-100%);
-    }
-
-    100% {
-        transform: translateX(100%);
-    }
+@keyframes app-loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }

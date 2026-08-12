@@ -220,6 +220,12 @@ class WebSocketGateway:
         await session_sync.register(websocket)
         self._session_syncs[session_id] = session_sync
         self._client_sessions[websocket] = session_id
+        logger.info(
+            "start_analysis received: session=%s tickers=%s client=%s",
+            session_id,
+            tickers,
+            getattr(websocket, "remote_address", None),
+        )
 
         # 如果有分析处理器，异步启动分析任务
         if self._analysis_handler:

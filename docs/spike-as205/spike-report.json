@@ -1,0 +1,578 @@
+{
+  "meta": {
+    "generated_at": "2026-07-28T09:24:33.259253+00:00",
+    "python": "3.13.9 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 19:11:29) [Clang 20.1.8 ]",
+    "executable": "/Users/aceplus/devlop/llm/ainvestor/.venv-as205-spike/bin/python",
+    "cwd": "/Users/aceplus/devlop/llm/ainvestor",
+    "live_llm": false,
+    "agentscope_version": "2.0.5",
+    "agentscope_file": "/Users/aceplus/devlop/llm/ainvestor/.venv-as205-spike/lib/python3.13/site-packages/agentscope/__init__.py",
+    "decision": {
+      "decision": "NO-GO",
+      "p0_pass": 6,
+      "p0_warn": 0,
+      "p0_fail": 2,
+      "p0_total": 8,
+      "critical_fails": [
+        "EXP-pipeline",
+        "EXP-memory",
+        "P0-06",
+        "P0-08"
+      ],
+      "high_fails": [],
+      "rationale": [
+        "P0 fail=2, warn=0, pass=6/8",
+        "Multiple critical API gaps — prefer stay on 1.x + self-built HITL",
+        "MsgHub/conference primitive weak — Phase3 cost dominates"
+      ]
+    }
+  },
+  "decision": {
+    "decision": "NO-GO",
+    "p0_pass": 6,
+    "p0_warn": 0,
+    "p0_fail": 2,
+    "p0_total": 8,
+    "critical_fails": [
+      "EXP-pipeline",
+      "EXP-memory",
+      "P0-06",
+      "P0-08"
+    ],
+    "high_fails": [],
+    "rationale": [
+      "P0 fail=2, warn=0, pass=6/8",
+      "Multiple critical API gaps — prefer stay on 1.x + self-built HITL",
+      "MsgHub/conference primitive weak — Phase3 cost dominates"
+    ]
+  },
+  "results": [
+    {
+      "id": "P0-01",
+      "title": "Import agentscope / version",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "version=2.0.5",
+      "evidence": {
+        "version": "2.0.5",
+        "file": "/Users/aceplus/devlop/llm/ainvestor/.venv-as205-spike/lib/python3.13/site-packages/agentscope/__init__.py"
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-agent",
+      "title": "Import agentscope.agent",
+      "severity": "info",
+      "status": "pass",
+      "detail": "5 public names",
+      "evidence": {
+        "exports_sample": [
+          "Agent",
+          "ContextConfig",
+          "InjectionConfig",
+          "ModelConfig",
+          "ReActConfig"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-message",
+      "title": "Import agentscope.message",
+      "severity": "info",
+      "status": "pass",
+      "detail": "17 public names",
+      "evidence": {
+        "exports_sample": [
+          "AssistantMsg",
+          "Base64Source",
+          "ContentBlock",
+          "ContentBlockTypes",
+          "DataBlock",
+          "HintBlock",
+          "Msg",
+          "SystemMsg",
+          "TextBlock",
+          "ThinkingBlock",
+          "ToolCallBlock",
+          "ToolCallState",
+          "ToolResultBlock",
+          "ToolResultState",
+          "URLSource",
+          "Usage",
+          "UserMsg"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-tool",
+      "title": "Import agentscope.tool",
+      "severity": "info",
+      "status": "pass",
+      "detail": "27 public names",
+      "evidence": {
+        "exports_sample": [
+          "BackendBase",
+          "Bash",
+          "Edit",
+          "ExecResult",
+          "Function",
+          "FunctionTool",
+          "Glob",
+          "Grep",
+          "LocalBackend",
+          "MCPTool",
+          "ParamsBase",
+          "PowerShell",
+          "Read",
+          "RegisteredTool",
+          "ResetTools",
+          "TaskCreate",
+          "TaskGet",
+          "TaskList",
+          "TaskUpdate",
+          "ToolBase",
+          "ToolChoice",
+          "ToolChunk",
+          "ToolGroup",
+          "ToolMiddlewareBase",
+          "ToolResponse",
+          "Toolkit",
+          "Write"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-pipeline",
+      "title": "Import agentscope.pipeline",
+      "severity": "critical",
+      "status": "fail",
+      "detail": "agentscope.pipeline not importable",
+      "evidence": {},
+      "error": "ModuleNotFoundError: No module named 'agentscope.pipeline'"
+    },
+    {
+      "id": "EXP-memory",
+      "title": "Import agentscope.memory",
+      "severity": "critical",
+      "status": "fail",
+      "detail": "agentscope.memory not importable",
+      "evidence": {},
+      "error": "ModuleNotFoundError: No module named 'agentscope.memory'"
+    },
+    {
+      "id": "EXP-model",
+      "title": "Import agentscope.model",
+      "severity": "info",
+      "status": "pass",
+      "detail": "15 public names",
+      "evidence": {
+        "exports_sample": [
+          "AnthropicChatModel",
+          "ChatModelBase",
+          "ChatResponse",
+          "ChatUsage",
+          "DashScopeChatModel",
+          "DeepSeekChatModel",
+          "FinishedReason",
+          "GeminiChatModel",
+          "ModelCard",
+          "MoonshotChatModel",
+          "OllamaChatModel",
+          "OpenAIChatModel",
+          "OpenAIResponseModel",
+          "StructuredResponse",
+          "XAIChatModel"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-formatter",
+      "title": "Import agentscope.formatter",
+      "severity": "info",
+      "status": "pass",
+      "detail": "19 public names",
+      "evidence": {
+        "exports_sample": [
+          "AnthropicChatFormatter",
+          "AnthropicMultiAgentFormatter",
+          "DashScopeChatFormatter",
+          "DashScopeMultiAgentFormatter",
+          "DeepSeekChatFormatter",
+          "DeepSeekMultiAgentFormatter",
+          "FormatterBase",
+          "GeminiChatFormatter",
+          "GeminiMultiAgentFormatter",
+          "MoonshotChatFormatter",
+          "MoonshotMultiAgentFormatter",
+          "OllamaChatFormatter",
+          "OllamaMultiAgentFormatter",
+          "OpenAIChatFormatter",
+          "OpenAIMultiAgentFormatter",
+          "OpenAIResponseFormatter",
+          "OpenAIResponseMultiAgentFormatter",
+          "XAIChatFormatter",
+          "XAIMultiAgentFormatter"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "EXP-event",
+      "title": "Import agentscope.event",
+      "severity": "info",
+      "status": "pass",
+      "detail": "34 public names",
+      "evidence": {
+        "exports_sample": [
+          "AgentEvent",
+          "ConfirmResult",
+          "CustomEvent",
+          "DataBlockDeltaEvent",
+          "DataBlockEndEvent",
+          "DataBlockStartEvent",
+          "EventBase",
+          "EventType",
+          "ExceedMaxItersEvent",
+          "ExternalExecutionResultEvent",
+          "HintBlockEvent",
+          "ModelCallEndEvent",
+          "ModelCallStartEvent",
+          "ReplyEndEvent",
+          "ReplyEndReason",
+          "ReplyFinishedReason",
+          "ReplyStartEvent",
+          "RequireExternalExecutionEvent",
+          "RequireUserConfirmEvent",
+          "TextBlockDeltaEvent",
+          "TextBlockEndEvent",
+          "TextBlockStartEvent",
+          "ThinkingBlockDeltaEvent",
+          "ThinkingBlockEndEvent",
+          "ThinkingBlockStartEvent",
+          "ToolCallDeltaEvent",
+          "ToolCallEndEvent",
+          "ToolCallStartEvent",
+          "ToolResultDataDeltaEvent",
+          "ToolResultEndEvent",
+          "ToolResultStartEvent",
+          "ToolResultTextDeltaEvent",
+          "UserConfirmResultEvent",
+          "UserInterruptEvent"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "P0-02",
+      "title": "ReActAgent (or equivalent) available",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "using Agent; methods=['reply', 'reply_stream', '__call__', 'observe']; ReActAgent missing; Agent present (migration to new primary API likely)",
+      "evidence": {
+        "candidates": [
+          "Agent"
+        ],
+        "has_ReActAgent": false,
+        "has_Agent": true,
+        "subclass_of": "Agent",
+        "methods": [
+          "reply",
+          "reply_stream",
+          "__call__",
+          "observe"
+        ],
+        "init_sig": "(self, name: str, system_prompt: str, model: agentscope.model._base.ChatModelBase, toolkit: agentscope.tool._toolkit.Toolkit | None = None, middlewares: list[typing.Any] | None = None, state: agentscope.state._state.AgentState | None = None, offloader: agentscope.workspace._offload_protocol.Offloader | None = None, model_config: agentscope.agent._config.ModelConfig | None = None, context_config: agentscope.agent._config.ContextConfig | None = None, react_config: agentscope.agent._config.ReActConfig | None = None, injection_config: agentscope.agent._config.InjectionConfig | None = None) -> None"
+      },
+      "error": null
+    },
+    {
+      "id": "P0-07",
+      "title": "reply() available for full-answer style calls",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "Class exposes reply(); runtime return type still needs PoC",
+      "evidence": {
+        "method": "reply"
+      },
+      "error": null
+    },
+    {
+      "id": "P0-03",
+      "title": "Message construction (Msg / UserMsg)",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "constructed via UserMsg; extracted='hello spike'",
+      "evidence": {
+        "exports_hit": [
+          "Msg",
+          "UserMsg",
+          "TextBlock"
+        ],
+        "Msg_errors": [
+          "ValidationError: 1 validation error for Msg\ncontent\n  Input should be a valid list [type=list_type, input_value='hello spike', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/list_type",
+          "TypeError: BaseModel.__init__() takes 1 positional argument but 4 were given"
+        ],
+        "UserMsg_errors": [
+          "UserMsg() missing 1 required positional argument: 'content'"
+        ],
+        "TextBlock_sample": "TextBlock(type='text', text='block', id='4f1c601148dc4f7297e0a159f1eb802f')",
+        "construct_path": "UserMsg",
+        "extracted_text": "hello spike",
+        "constructed_type": "Msg"
+      },
+      "error": null
+    },
+    {
+      "id": "P0-04",
+      "title": "Toolkit custom function registration",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "Registered via add_tool",
+      "evidence": {
+        "has_Toolkit": true,
+        "has_ToolResponse": true,
+        "toolkit_methods": [
+          "add_tool",
+          "call_tool",
+          "check_tool_available",
+          "clear",
+          "get_skill_instructions",
+          "get_tool",
+          "get_tool_schemas",
+          "remove_tool"
+        ],
+        "toolresponse_methods": [
+          "append_chunk",
+          "construct",
+          "copy",
+          "dict",
+          "from_orm",
+          "json",
+          "model_computed_fields",
+          "model_config",
+          "model_construct",
+          "model_copy",
+          "model_dump",
+          "model_dump_json",
+          "model_extra",
+          "model_fields",
+          "model_fields_set",
+          "model_json_schema",
+          "model_parametrized_name",
+          "model_post_init",
+          "model_rebuild",
+          "model_validate",
+          "model_validate_json",
+          "model_validate_strings",
+          "parse_file",
+          "parse_obj",
+          "parse_raw",
+          "schema",
+          "schema_json",
+          "update_forward_refs",
+          "validate"
+        ],
+        "register_methods": [
+          "add_tool"
+        ],
+        "register_used": "add_tool",
+        "toolresponse_paths": [
+          "ToolResponse(content=[TextBlock...])"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "P0-05",
+      "title": "ToolResponse / text return path",
+      "severity": "critical",
+      "status": "pass",
+      "detail": "Constructed ToolResponse; paths=['ToolResponse(content=[TextBlock...])']",
+      "evidence": {
+        "has_Toolkit": true,
+        "has_ToolResponse": true,
+        "toolkit_methods": [
+          "add_tool",
+          "call_tool",
+          "check_tool_available",
+          "clear",
+          "get_skill_instructions",
+          "get_tool",
+          "get_tool_schemas",
+          "remove_tool"
+        ],
+        "toolresponse_methods": [
+          "append_chunk",
+          "construct",
+          "copy",
+          "dict",
+          "from_orm",
+          "json",
+          "model_computed_fields",
+          "model_config",
+          "model_construct",
+          "model_copy",
+          "model_dump",
+          "model_dump_json",
+          "model_extra",
+          "model_fields",
+          "model_fields_set",
+          "model_json_schema",
+          "model_parametrized_name",
+          "model_post_init",
+          "model_rebuild",
+          "model_validate",
+          "model_validate_json",
+          "model_validate_strings",
+          "parse_file",
+          "parse_obj",
+          "parse_raw",
+          "schema",
+          "schema_json",
+          "update_forward_refs",
+          "validate"
+        ],
+        "register_methods": [
+          "add_tool"
+        ],
+        "register_used": "add_tool",
+        "toolresponse_paths": [
+          "ToolResponse(content=[TextBlock...])"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "P0-06",
+      "title": "MsgHub or multi-agent broadcast primitive",
+      "severity": "critical",
+      "status": "fail",
+      "detail": "agentscope.pipeline missing",
+      "evidence": {
+        "team_note": null
+      },
+      "error": "ModuleNotFoundError: No module named 'agentscope.pipeline'"
+    },
+    {
+      "id": "P0-08",
+      "title": "InMemoryMemory + clear",
+      "severity": "critical",
+      "status": "fail",
+      "detail": "",
+      "evidence": {},
+      "error": "ModuleNotFoundError: No module named 'agentscope.memory'"
+    },
+    {
+      "id": "P1-01",
+      "title": "OpenAIChatModel present (base_url compatibility manual)",
+      "severity": "high",
+      "status": "warn",
+      "detail": "sig=(self, credential: agentscope.credential._openai.OpenAICredential, model: str, parameters: 'OpenAIChatModel.Parameters | None' = None, stream: bool = True, max_retries: int = 3, retry_delay: float = 1.0, context_size: int = 128000, formatter: agentscope.formatter._formatter_base.FormatterBase | None = None, client_kwargs: dict[str, typing.Any] | None = None, extra_body: dict[str, typing.Any] | None = None) -> None",
+      "evidence": {
+        "OpenAIChatModel": true,
+        "DashScopeChatModel": true,
+        "AnthropicChatModel": true,
+        "GeminiChatModel": true,
+        "OllamaChatModel": true,
+        "OpenAIChatModel_sig": "(self, credential: agentscope.credential._openai.OpenAICredential, model: str, parameters: 'OpenAIChatModel.Parameters | None' = None, stream: bool = True, max_retries: int = 3, retry_delay: float = 1.0, context_size: int = 128000, formatter: agentscope.formatter._formatter_base.FormatterBase | None = None, client_kwargs: dict[str, typing.Any] | None = None, extra_body: dict[str, typing.Any] | None = None) -> None"
+      },
+      "error": null
+    },
+    {
+      "id": "P1-02",
+      "title": "DashScopeChatModel present",
+      "severity": "high",
+      "status": "pass",
+      "detail": "",
+      "evidence": {
+        "OpenAIChatModel": true,
+        "DashScopeChatModel": true,
+        "AnthropicChatModel": true,
+        "GeminiChatModel": true,
+        "OllamaChatModel": true,
+        "OpenAIChatModel_sig": "(self, credential: agentscope.credential._openai.OpenAICredential, model: str, parameters: 'OpenAIChatModel.Parameters | None' = None, stream: bool = True, max_retries: int = 3, retry_delay: float = 1.0, context_size: int = 128000, formatter: agentscope.formatter._formatter_base.FormatterBase | None = None, client_kwargs: dict[str, typing.Any] | None = None, extra_body: dict[str, typing.Any] | None = None) -> None"
+      },
+      "error": null
+    },
+    {
+      "id": "P1-03",
+      "title": "Chat formatters present",
+      "severity": "high",
+      "status": "pass",
+      "detail": "",
+      "evidence": {
+        "OpenAIChatFormatter": true,
+        "DashScopeChatFormatter": true,
+        "AnthropicChatFormatter": true,
+        "GeminiChatFormatter": true,
+        "OllamaChatFormatter": true,
+        "OpenAIMultiAgentFormatter": true,
+        "DashScopeMultiAgentFormatter": true
+      },
+      "error": null
+    },
+    {
+      "id": "P1-CRED",
+      "title": "agentscope.credential module present",
+      "severity": "medium",
+      "status": "info",
+      "detail": "2.0-style credentials may be required",
+      "evidence": {
+        "exports": [
+          "AnthropicCredential",
+          "CredentialBase",
+          "CredentialFactory",
+          "DashScopeCredential",
+          "DeepSeekCredential",
+          "GeminiCredential",
+          "MoonshotCredential",
+          "OllamaCredential",
+          "OpenAICredential",
+          "XAICredential"
+        ]
+      },
+      "error": null
+    },
+    {
+      "id": "P1-06",
+      "title": "HITL / interrupt event symbols",
+      "severity": "medium",
+      "status": "pass",
+      "detail": "found ['ConfirmResult', 'ExternalExecutionResultEvent', 'RequireExternalExecutionEvent', 'RequireUserConfirmEvent', 'UserConfirmResultEvent', 'UserInterruptEvent']",
+      "evidence": {
+        "found": {
+          "RequireUserConfirmEvent": "agentscope.event",
+          "UserConfirmResultEvent": "agentscope.event",
+          "RequireExternalExecutionEvent": "agentscope.event",
+          "ExternalExecutionResultEvent": "agentscope.event",
+          "ConfirmResult": "agentscope.event",
+          "UserInterruptEvent": "agentscope.event"
+        },
+        "missing": []
+      },
+      "error": null
+    },
+    {
+      "id": "P1-08",
+      "title": "UserAgent present",
+      "severity": "medium",
+      "status": "warn",
+      "detail": "UserAgent missing — human-as-participant needs alternate path",
+      "evidence": {},
+      "error": null
+    },
+    {
+      "id": "L-01",
+      "title": "Live LLM smoke",
+      "severity": "high",
+      "status": "skip",
+      "detail": "Pass --live-llm to enable (needs API key)",
+      "evidence": {},
+      "error": null
+    }
+  ]
+}

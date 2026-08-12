@@ -652,9 +652,9 @@ export function ValuationLab({ ticker, company: companyProp }: ValuationLabProps
                 </div>
 
                 <div className="flex justify-between items-center mb-4">
-                    {loading && <span className="text-sm text-blue-500 flex items-center gap-2"><span className="inline-block w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></span>正在计算估值模型...</span>}
+                    {loading && <span className="text-sm text-brand-600 flex items-center gap-2"><span className="inline-block w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin"></span>正在计算估值模型...</span>}
                     {activeError && (
-                        <span className="text-sm text-red-500">
+                        <span className="text-sm text-destructive">
                             {currentTab === 'DCF' ? 'DCF: '
                                 : currentTab === 'RIM' ? 'RIM: '
                                 : currentTab === 'RELATIVE' ? '相对估值: '
@@ -667,7 +667,7 @@ export function ValuationLab({ ticker, company: companyProp }: ValuationLabProps
                         const data = activeData as Record<string, unknown>;
                         const valuation = data.valuation as Record<string, unknown> | undefined;
                         return (
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-muted-foreground">
                             当前股价:{' '}
                             {(() => {
                                 const p = data.current_price ?? company?.current_price;
@@ -710,7 +710,7 @@ export function ValuationLab({ ticker, company: companyProp }: ValuationLabProps
                     !activeError || triData?.blended_price ? (
                         <TriangulateTabPanel data={triData} loading={loading} />
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
+                        <div className="text-center py-12 text-muted-foreground">
                             <p className="text-lg mb-2">无法显示综合估值</p>
                             <p className="text-sm">{activeError}</p>
                         </div>
@@ -726,7 +726,7 @@ export function ValuationLab({ ticker, company: companyProp }: ValuationLabProps
                             isGrowthPositive={isGrowthPositive}
                         />
                     ) : (
-                        <div className="text-center py-12 text-gray-500">
+                        <div className="text-center py-12 text-muted-foreground">
                             <p className="text-lg mb-2">相对估值不可用</p>
                             <p className="text-sm">{activeError}</p>
                         </div>
@@ -765,12 +765,12 @@ export function ValuationLab({ ticker, company: companyProp }: ValuationLabProps
                         />
                     )
                 ) : !loading && activeError ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-muted-foreground">
                         <p className="text-lg mb-2">无法显示估值模型</p>
                         <p className="text-sm">{currentTab === 'DCF' ? 'DCF模型' : 'RIM模型'}暂时无法使用</p>
                     </div>
                 ) : !loading && !activeError && !activeData?.valuation ? (
-                    <div className="text-center py-12 text-gray-500">
+                    <div className="text-center py-12 text-muted-foreground">
                         <p className="text-lg mb-2">暂无估值数据</p>
                         <p className="text-sm">请在上方输入股票代码后重试</p>
                     </div>

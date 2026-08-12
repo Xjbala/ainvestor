@@ -91,7 +91,7 @@ export function ExpertSidebar({ ticker = '---', company: companyProp }: ExpertSi
                     </thead>
                     <tbody>
                         <tr>
-                            <td colSpan={3} style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12 }}>
+                            <td colSpan={3} style={{ textAlign: 'center', color: 'var(--muted-foreground)', fontSize: 12 }}>
                                 历史快照功能即将接入
                             </td>
                         </tr>

@@ -46,12 +46,7 @@ function App() {
 
   // Stock list analysis handlers
   const handleStockAnalyzeAI = (ticker: string) => {
-    const command = createStartAnalysisCommand([ticker], new Date().toISOString().split('T')[0]);
-    send(command);
-    dispatch({
-      type: 'SESSION_START',
-      payload: { id: `local-${Date.now()}`, tickers: [ticker], date: new Date().toISOString() }
-    });
+    send(createStartAnalysisCommand([ticker], new Date().toISOString().split('T')[0]));
     setMode('ai');
   };
 
@@ -94,81 +89,8 @@ function App() {
     dispatch({ type: 'SESSION_END', payload: { success: false } });
   };
 
-  // Auto-load last session
-  useEffect(() => {
-    console.log('[Session Restore] Effect triggered, state.id:', state.id);
-    if (state.id) {
-      console.log('[Session Restore] Session already loaded, skipping');
-      return;
-    }
+  // 历史会话仅在工作台和报告页按需加载，避免覆盖实时协作状态。
 
-    const fetchLastSession = async () => {
-      try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-        console.log('[Session Restore] Fetching sessions from:', `${API_URL}/api/sessions?limit=1`);
-
-        const res = await fetch(`${API_URL}/api/sessions?limit=1`);
-        if (!res.ok) {
-          throw new Error(`Failed to fetch sessions: ${res.status} ${res.statusText}`);
-        }
-        const sessions = await res.json();
-        console.log('[Session Restore] Sessions response:', sessions);
-
-        if (hasLiveSession.current) {
-          console.log('[Session Restore] Live WebSocket session started, skipping restore');
-          return;
-        }
-
-        if (sessions && sessions.length > 0) {
-          const session = sessions[0];
-          console.log('[Session Restore] Found previous session:', session);
-
-          // Fetch outputs
-          console.log('[Session Restore] Fetching outputs for session:', session.id);
-          const outputsRes = await fetch(`${API_URL}/api/sessions/${session.id}/outputs`);
-          if (!outputsRes.ok) {
-            throw new Error(`Failed to fetch outputs: ${outputsRes.status} ${outputsRes.statusText}`);
-          }
-          const outputs = await outputsRes.json();
-          console.log('[Session Restore] Outputs:', outputs);
-
-          // Fetch report if completed
-          let report = '';
-          if (session.status === 'completed') {
-            try {
-              console.log('[Session Restore] Fetching report for completed session');
-              const reportRes = await fetch(`${API_URL}/api/sessions/${session.id}/report`);
-              if (reportRes.ok) {
-                const reportData = await reportRes.json();
-                report = reportData.report_content;
-                console.log('[Session Restore] Report fetched, length:', report?.length);
-              } else {
-                console.log('[Session Restore] Report fetch failed:', reportRes.status, reportRes.statusText);
-              }
-            } catch (e) {
-              console.log('[Session Restore] No report found for completed session:', e);
-            }
-          }
-
-          console.log('[Session Restore] Dispatching RESTORE_SESSION action');
-          dispatch({
-            type: 'RESTORE_SESSION',
-            payload: {
-              session: { ...session, report },
-              outputs
-            }
-          });
-          console.log('[Session Restore] Session restored successfully');
-        } else {
-          console.log('[Session Restore] No previous sessions found');
-        }
-      } catch (e) {
-        console.error('[Session Restore] Failed to load last session:', e);
-      }
-    };
-
-    fetchLastSession();
-  }, []); // Run once on mount
 
   // Combine agent analysis outputs with conference messages for the feed
   const feedMessages = useMemo(() => {
@@ -231,7 +153,7 @@ function App() {
 
   return (
     <ToastProvider>
-    <div className="flex bg-gray-50 text-gray-900 font-sans min-h-screen">
+    <div className="flex bg-background text-foreground font-sans min-h-screen">
       {/* Global Sidebar (Left Navigation) */}
       <Sidebar activeMode={mode} onSwitchMode={setMode} />
 

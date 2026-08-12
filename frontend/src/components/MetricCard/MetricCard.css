@@ -1,11 +1,11 @@
 /**
- * Metric Card - FinTech Futurism 风格样式
+ * Metric Card - Golden Time 浅色主题
  *
  * 设计理念：
- * - 深色科技背景
- * - 霓虹渐变强调色
- * - 玻璃态卡片设计
- * - 动态光晕效果
+ * - 温暖浅色背景
+ * - 橄榄金 / 大地色强调
+ * - 色块与边框替代阴影
+ * - 大圆角签名设计
  */
 
 /* ========================================
@@ -13,9 +13,9 @@
    ======================================== */
 .metric-card {
     position: relative;
-    background: rgba(22, 27, 34, 0.6);
-    border: 1px solid rgba(240, 240, 255, 0.08);
-    border-radius: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 8px);
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -23,14 +23,13 @@
     align-items: center;
     text-align: center;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(20px);
     overflow: hidden;
 }
 
 /* Compact mode - smaller padding and font sizes */
 .metrics-row.compact .metric-card {
     padding: 12px;
-    border-radius: 12px;
+    border-radius: calc(var(--radius) - 12px);
 }
 
 .metrics-row.compact .metric-card h3 {
@@ -53,7 +52,7 @@
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(0, 240, 255, 0.1) 0%, transparent 60%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--secondary) 12%, transparent) 0%, transparent 60%);
     opacity: 0;
     transition: opacity 0.3s ease;
     pointer-events: none;
@@ -63,17 +62,17 @@
 .card-border {
     position: absolute;
     inset: 0;
-    border-radius: 16px;
+    border-radius: calc(var(--radius) - 8px);
     padding: 1px;
-    background: linear-gradient(135deg, 
-        rgba(240, 240, 255, 0.1) 0%, 
-        transparent 50%, 
-        rgba(240, 240, 255, 0.1) 100%);
-    -webkit-mask: 
-        linear-gradient(#fff 0 0) content-box, 
+    background: linear-gradient(135deg,
+        color-mix(in srgb, var(--accent) 30%, transparent) 0%,
+        transparent 50%,
+        color-mix(in srgb, var(--accent) 30%, transparent) 100%);
+    -webkit-mask:
+        linear-gradient(#fff 0 0) content-box,
         linear-gradient(#fff 0 0);
-    mask: 
-        linear-gradient(#fff 0 0) content-box, 
+    mask:
+        linear-gradient(#fff 0 0) content-box,
         linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
@@ -83,11 +82,9 @@
 /* Hover states */
 .metric-card:hover {
     transform: translateY(-4px);
-    background: rgba(22, 27, 34, 0.8);
-    border-color: rgba(0, 240, 255, 0.2);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(0, 240, 255, 0.1);
+    background: var(--muted);
+    border-color: color-mix(in srgb, var(--secondary) 40%, var(--border));
+    box-shadow: none;
 }
 
 .metric-card:hover .card-glow {
@@ -100,58 +97,52 @@
 
 /* Success type (green) */
 .metric-card.type-success:hover {
-    border-color: rgba(16, 185, 129, 0.3);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(16, 185, 129, 0.1);
+    border-color: color-mix(in srgb, var(--success) 40%, var(--border));
+    box-shadow: none;
 }
 
 .metric-card.type-success .card-glow {
-    background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 60%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--success) 15%, transparent) 0%, transparent 60%);
 }
 
 .metric-card.type-success .value-success {
-    color: #10b981;
-    text-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    color: var(--success);
+    text-shadow: none;
 }
 
 /* Warning type (orange) */
 .metric-card.type-warning:hover {
-    border-color: rgba(249, 115, 22, 0.3);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(249, 115, 22, 0.1);
+    border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+    box-shadow: none;
 }
 
 .metric-card.type-warning .card-glow {
-    background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, transparent 60%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--warning) 15%, transparent) 0%, transparent 60%);
 }
 
 .metric-card.type-warning .value-warning {
-    color: #f97316;
-    text-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+    color: var(--warning);
+    text-shadow: none;
 }
 
 /* Danger type (red) */
 .metric-card.type-danger:hover {
-    border-color: rgba(239, 68, 68, 0.3);
-    box-shadow: 
-        0 12px 40px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(239, 68, 68, 0.1);
+    border-color: color-mix(in srgb, var(--destructive) 40%, var(--border));
+    box-shadow: none;
 }
 
 .metric-card.type-danger .card-glow {
-    background: radial-gradient(circle, rgba(239, 68, 68, 0.15) 0%, transparent 60%);
+    background: radial-gradient(circle, color-mix(in srgb, var(--destructive) 15%, transparent) 0%, transparent 60%);
 }
 
 .metric-card.type-danger .value-danger {
-    color: #ef4444;
-    text-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+    color: var(--destructive);
+    text-shadow: none;
 }
 
 /* Neutral type */
 .metric-card.type-neutral .value-neutral {
-    color: #cbd5e1;
+    color: var(--muted-foreground);
 }
 
 /* ========================================
@@ -160,7 +151,7 @@
 .card-title {
     font-size: 0.65rem;
     font-weight: 700;
-    color: #8b949e;
+    color: var(--muted-foreground);
     margin: 0 0 12px 0;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -184,7 +175,7 @@
 .card-subtext {
     font-size: 0.7rem;
     font-weight: 500;
-    color: #484f58;
+    color: var(--muted-foreground);
     margin: 0;
     position: relative;
     z-index: 1;
@@ -198,17 +189,14 @@
     bottom: calc(100% + 12px);
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(13, 17, 23, 0.95);
-    border: 1px solid rgba(240, 240, 255, 0.1);
-    border-radius: 12px;
+    background: var(--popover, var(--card));
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 12px);
     padding: 12px 16px;
     min-width: 200px;
     max-width: 300px;
-    box-shadow: 
-        0 8px 24px rgba(0, 0, 0, 0.4),
-        0 0 0 1px rgba(0, 240, 255, 0.1);
+    box-shadow: none;
     z-index: 100;
-    backdrop-filter: blur(10px);
     animation: tooltipFadeIn 0.2s ease;
 }
 
@@ -230,15 +218,15 @@
     transform: translateX(-50%);
     width: 12px;
     height: 12px;
-    background: rgba(13, 17, 23, 0.95);
-    border-right: 1px solid rgba(240, 240, 255, 0.1);
-    border-bottom: 1px solid rgba(240, 240, 255, 0.1);
+    background: var(--popover, var(--card));
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
     transform: translateX(-50%) rotate(45deg);
 }
 
 .tooltip-content {
     font-size: 0.75rem;
-    color: #cbd5e1;
+    color: var(--muted-foreground);
     line-height: 1.5;
     font-weight: 500;
 }

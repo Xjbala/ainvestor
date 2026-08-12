@@ -86,41 +86,41 @@ export const CompanySearchInput: React.FC<CompanySearchInputProps> = ({
     return (
         <div ref={containerRef} className="relative w-72">
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => options.length > 0 && setShowDropdown(true)}
                     placeholder={placeholder}
-                    className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-9 pr-8 py-2 border border-input rounded-vibe-sm text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-primary"
                 />
                 {query && (
                     <button
                         onClick={handleClear}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
                     >
                         <X className="w-4 h-4" />
                     </button>
                 )}
             </div>
             {showDropdown && options.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-vibe-sm shadow-lg max-h-60 overflow-auto">
                     {options.map((opt) => (
                         <button
                             key={opt.stock_code}
                             onClick={() => handleSelect(opt.stock_code, opt.stock_name)}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-blue-50 flex items-center gap-2"
+                            className="w-full px-3 py-2 text-left text-sm hover:bg-brand-50 flex items-center gap-2"
                         >
-                            <span className="font-mono text-blue-600 font-medium">{opt.stock_code}</span>
-                            <span className="text-gray-700">{opt.stock_name}</span>
+                            <span className="font-mono text-primary font-medium">{opt.stock_code}</span>
+                            <span className="text-foreground">{opt.stock_name}</span>
                         </button>
                     ))}
                 </div>
             )}
             {isLoading && (
                 <div className="absolute right-10 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-4 h-4 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
                 </div>
             )}
         </div>

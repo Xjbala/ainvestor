@@ -109,7 +109,14 @@ export function DecisionFooter({
 
             <div className="footer-stats">
                 {hasContradiction && (
-                    <div className="w-full mb-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs flex items-center gap-2">
+                    <div
+                        className="w-full mb-2 px-3 py-2 rounded-lg text-xs flex items-center gap-2"
+                        style={{
+                            background: 'rgba(244, 179, 102, 0.15)',
+                            border: '1px solid rgba(244, 179, 102, 0.4)',
+                            color: 'var(--warning-foreground)',
+                        }}
+                    >
                         <span>⚠️</span>
                         <span>评级与预期收益方向矛盾，建议以会议讨论结论为准，谨慎参考此建议</span>
                     </div>

@@ -4,7 +4,7 @@ import { CoordinationFlow, type AgentMessage } from './CoordinationFlow';
 import { DecisionFooter } from './DecisionFooter';
 import { ValuationMethodPanel } from './ValuationMethodPanel';
 import './AIMode.css';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { stripThinkingContent } from '../../utils/reportUtils';
@@ -14,6 +14,7 @@ import {
     parseTargetPriceNumber,
 } from '../../utils/metricExtraction';
 import { companyApi } from '../../services/companyApi';
+import { exportReport } from '../../utils/reportExport';
 
 // Use this interface to accept props from App.tsx
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,6 +91,32 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
     const valData = getAgentData('valuation_analyst');
     const riskData = getAgentData('risk_manager');
     const portData = getAgentData('portfolio_manager');
+
+    // 整体进度与阶段追踪
+    const allAgentData = [fundData, valData, riskData, portData];
+    const overallProgress = Math.round(
+        allAgentData.reduce((sum, a) => sum + a.progress, 0) / allAgentData.length
+    );
+
+    const phases = useMemo(() => {
+        const fundDone = fundData.status === 'completed';
+        const valDone = valData.status === 'completed';
+        const riskDone = riskData.status === 'completed';
+        const portDone = portData.status === 'completed';
+        const portActive = portData.status === 'active';
+
+        // 阶段完成判定
+        const phaseDone = [fundDone && valDone, riskDone, portActive || portDone, portDone];
+        // 当前活跃阶段 = 第一个未完成的
+        const activeIdx = phaseDone.indexOf(false);
+
+        return [
+            { label: '评估', done: phaseDone[0], active: activeIdx === 0 },
+            { label: '风险', done: phaseDone[1], active: activeIdx === 1 },
+            { label: '会议', done: phaseDone[2], active: activeIdx === 2 },
+            { label: '决策', done: phaseDone[3], active: activeIdx === 3 },
+        ];
+    }, [fundData.status, valData.status, riskData.status, portData.status]);
 
     // 估值分析师多方法拆解（从 agent content / metrics 解析）
     const valuationBreakdown = useMemo(() => {
@@ -224,7 +251,8 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
             />
 
             <div className="ai-mode-content">
-                <div className="analyst-dashboard" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                <div className="ai-left-column">
+                <div className="analyst-dashboard">
                     <AnalystCard
                         title="基本面分析师"
                         subtitle="财务指标与竞争优势"
@@ -278,6 +306,81 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                     />
                 </div>
 
+                <CoordinationFlow messages={displayedMessages} />
+                </div>
+
+                <div className="ai-right-column">
+                {/* Agent 进度总览 —— 增强版：整体进度 + 阶段追踪 + 各Agent进度 */}
+                <div className="agent-overview-card">
+                    <div className="agent-overview-header">
+                        <div className="agent-overview-title">智能体进度</div>
+                        <div className="agent-overview-total">{overallProgress}%</div>
+                    </div>
+                    <div className="agent-overview-phases">
+                        {phases.map((phase, i) => (
+                            <Fragment key={phase.label}>
+                                <div className={`agent-overview-phase ${phase.done ? 'done' : ''} ${phase.active ? 'active' : ''}`}>
+                                    <div className="agent-overview-phase-dot">
+                                        {phase.done ? '✓' : i + 1}
+                                    </div>
+                                    <div className="agent-overview-phase-label">{phase.label}</div>
+                                </div>
+                                {i < phases.length - 1 && <span className="agent-overview-phase-arrow">›</span>}
+                            </Fragment>
+                        ))}
+                    </div>
+                    {[
+                        { name: '基本面分析师', data: fundData, icon: '📈' },
+                        { name: '估值分析师', data: valData, icon: '💎' },
+                        { name: '风险管理师', data: riskData, icon: '🛡️' },
+                        { name: '投资顾问', data: portData, icon: '🧠' },
+                    ].map(({ name, data, icon }) => (
+                        <div key={name} className={`agent-overview-row status-${data.status}`}>
+                            <span className="agent-overview-icon">{icon}</span>
+                            <span className="agent-overview-name">{name}</span>
+                            <span className="agent-overview-bar">
+                                <span className="agent-overview-bar-fill" style={{ width: `${data.progress}%` }} />
+                            </span>
+                            <span className="agent-overview-status">
+                                {data.status === 'completed' ? '✓' : data.status === 'active' ? '··' : '—'}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* 分析概览 —— 元信息（不与左栏卡片重复） */}
+                <div className="meta-card">
+                    <div className="meta-title">分析概览</div>
+                    <div className="meta-grid">
+                        <div className="meta-item">
+                            <div className="meta-label">标的代码</div>
+                            <div className="meta-value">{ticker || '—'}</div>
+                        </div>
+                        <div className="meta-item">
+                            <div className="meta-label">分析日期</div>
+                            <div className="meta-value">{new Date().toISOString().slice(0, 10)}</div>
+                        </div>
+                        <div className="meta-item">
+                            <div className="meta-label">智能体</div>
+                            <div className="meta-value">4 位协作</div>
+                        </div>
+                        <div className="meta-item">
+                            <div className="meta-label">协作消息</div>
+                            <div className="meta-value">{messages.length} 条</div>
+                        </div>
+                        <div className="meta-item">
+                            <div className="meta-label">估值方法</div>
+                            <div className="meta-value">{valuationBreakdown?.methods?.length || 0} 种验证</div>
+                        </div>
+                        <div className="meta-item">
+                            <div className="meta-label">分析状态</div>
+                            <div className={`meta-value status-${analysisStatus || 'idle'}`}>
+                                {analysisStatus === 'completed' ? '已完成' : analysisStatus === 'running' ? '进行中' : analysisStatus === 'failed' ? '已终止' : '待启动'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <ValuationMethodPanel
                     loading={valuationLoading && !valuationBreakdown}
                     blendedPrice={valuationBreakdown?.blendedPrice}
@@ -294,10 +397,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                     risks={valuationBreakdown?.risks}
                 />
 
-                <CoordinationFlow messages={displayedMessages} />
-            </div>
-
-            <DecisionFooter
+                <DecisionFooter
                 status={analysisStatus === 'completed' || analysisStatus === 'failed' ? 'ready' : 'analyzing'}
                 recommendation={
                     analysisStatus === 'completed' || analysisStatus === 'failed'
@@ -332,33 +432,34 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                     }
                 }}
                 onExportPDF={() => {
-                    if (report && report.trim().length > 0) {
-                        const printWindow = window.open('', '_blank');
-                        if (printWindow) {
-                            printWindow.document.write(`
-                                <html>
-                                <head>
-                                    <title>投资决策报告 - ${ticker}</title>
-                                    <style>
-                                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; line-height: 1.6; }
-                                        h1 { color: #1a2332; border-bottom: 2px solid #3b82f6; padding-bottom: 10px; }
-                                        h2 { color: #374151; margin-top: 30px; }
-                                        pre { white-space: pre-wrap; word-wrap: break-word; }
-                                    </style>
-                                </head>
-                                <body>
-                                    <h1>投资决策报告 - ${ticker}</h1>
-                                    <pre>${report.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
-                                </body>
-                                </html>
-                            `);
-                            printWindow.document.close();
-                            setTimeout(() => { printWindow.print(); }, 500);
-                        }
-                    }
+                    if (!report || report.trim().length === 0) return;
+                    // 从隐藏容器中提取已渲染的 Markdown HTML
+                    const hiddenBody = document.getElementById('hidden-report-render');
+                    const reportHtml = hiddenBody?.innerHTML || '';
+                    exportReport({
+                        ticker: ticker || '',
+                        reportHtml,
+                        recommendation: metrics?.recommendation,
+                        targetPrice: metrics?.targetPrice,
+                        returnRate: upsideFromBreakdown != null
+                            ? `${upsideFromBreakdown > 0 ? '+' : ''}${upsideFromBreakdown.toFixed(1)}%`
+                            : undefined,
+                        blendedPrice: valuationBreakdown?.blendedPrice,
+                        currentPrice: headerPrice,
+                        upsidePct: upsideFromBreakdown,
+                        agents: [
+                            { name: '基本面分析师', icon: '📈', status: fundData.status, summary: fundData.logs[0] || '' },
+                            { name: '估值分析师', icon: '💎', status: valData.status, summary: valuationBreakdown?.blendedPrice != null
+                                ? `综合公允价 ¥${valuationBreakdown.blendedPrice.toFixed(2)}` : valData.logs[0] || '' },
+                            { name: '风险管理师', icon: '🛡️', status: riskData.status, summary: riskData.logs[0] || '' },
+                            { name: '投资顾问', icon: '🧠', status: portData.status, summary: portData.logs[0] || '' },
+                        ],
+                    });
                 }}
                 onStopAnalysis={onStopAnalysis}
-            />
+                />
+                </div>
+            </div>
 
             {/* Report Content Section */}
             {showReport && report && (
@@ -377,6 +478,14 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                             {stripThinkingContent(report)}
                         </ReactMarkdown>
                     </div>
+                </div>
+            )}
+            {/* 隐藏容器：始终渲染报告 Markdown，供导出时提取 HTML */}
+            {report && (
+                <div id="hidden-report-render" style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {stripThinkingContent(report)}
+                    </ReactMarkdown>
                 </div>
             )}
         </div>

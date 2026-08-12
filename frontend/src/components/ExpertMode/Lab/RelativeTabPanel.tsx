@@ -19,7 +19,7 @@ export function RelativeTabPanel({
 }: RelativeTabPanelProps) {
     if (!data) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 {loading ? '加载相对估值...' : '暂无相对估值数据'}
             </div>
         );
@@ -27,7 +27,7 @@ export function RelativeTabPanel({
 
     if (data.error && !data.valuation) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 <p className="text-lg mb-2">相对估值不可用</p>
                 <p className="text-sm">{data.error}</p>
             </div>
@@ -87,7 +87,7 @@ export function RelativeTabPanel({
             </div>
 
             {Array.isArray(data.adjustment?.reasons) && data.adjustment.reasons.length > 0 && (
-                <div className="mt-4 mb-4 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-gray-700">
+                <div className="mt-4 mb-4 p-3 bg-brand-50 border border-brand-200 rounded text-sm text-foreground">
                     <strong>倍数调整：</strong>
                     {data.adjustment.factor != null
                         ? `${(Number(data.adjustment.factor) * 100).toFixed(0)}%`
@@ -110,8 +110,8 @@ export function RelativeTabPanel({
                 ))}
             </div>
 
-            <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                     同业对比 ({peers.length} 家)
                 </h3>
                 <div className="overflow-x-auto">

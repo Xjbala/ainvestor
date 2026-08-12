@@ -130,8 +130,8 @@ export const TaskList: React.FC<TaskListProps> = ({ activeTab, onRefresh }) => {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-                    <p className="text-gray-500">加载中...</p>
+                    <Loader2 className="w-8 h-8 text-primary animate-spin mx-auto mb-3" />
+                    <p className="text-muted-foreground">加载中...</p>
                 </div>
             </div>
         );
@@ -139,12 +139,12 @@ export const TaskList: React.FC<TaskListProps> = ({ activeTab, onRefresh }) => {
 
     if (error) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-                <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-3" />
-                <p className="text-red-700 mb-3">{error}</p>
+            <div className="bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] rounded-vibe p-6 text-center">
+                <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-3" />
+                <p className="text-destructive mb-3">{error}</p>
                 <button
                     onClick={handleRefresh}
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                    className="px-4 py-2 bg-[rgba(239,68,68,0.12)] text-destructive rounded-vibe-sm hover:bg-[rgba(239,68,68,0.2)] transition-colors"
                 >
                     重试
                 </button>
@@ -155,10 +155,10 @@ export const TaskList: React.FC<TaskListProps> = ({ activeTab, onRefresh }) => {
     if (sortedTasks.length === 0) {
         return (
             <div className="text-center py-12">
-                <p className="text-gray-500 mb-4">暂无任务</p>
+                <p className="text-muted-foreground mb-4">暂无任务</p>
                 <button
                     onClick={handleRefresh}
-                    className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    className="px-4 py-2 bg-brand-50 text-primary rounded-vibe-sm hover:bg-brand-100 transition-colors"
                 >
                     刷新
                 </button>
@@ -169,10 +169,10 @@ export const TaskList: React.FC<TaskListProps> = ({ activeTab, onRefresh }) => {
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                     共 {sortedTasks.length} 个任务
                     {runningCount > 0 && (
-                        <span className="ml-2 inline-flex items-center gap-1 text-blue-600">
+                        <span className="ml-2 inline-flex items-center gap-1 text-primary">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             {runningCount} 个执行中
                         </span>
@@ -180,7 +180,7 @@ export const TaskList: React.FC<TaskListProps> = ({ activeTab, onRefresh }) => {
                 </p>
                 <button
                     onClick={handleRefresh}
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted rounded-vibe-sm transition-colors"
                 >
                     <RefreshCw className="w-4 h-4" />
                     刷新

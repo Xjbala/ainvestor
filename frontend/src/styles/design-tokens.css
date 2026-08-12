@@ -1,0 +1,194 @@
+/**
+ * Golden Time 设计系统 token —— 浅色主题为默认
+ * 来源：Golden Time Design Library (colors_and_type.css)
+ *
+ * 说明：
+ * - :root 为浅色主题（统一浅色方向）。
+ * - 主色为深棕 #3b352b，辅色为橄榄金 #9b965f，整体暖白 + 金棕基调。
+ * - 末尾「兼容映射层」把旧 FinTech 幽灵 token 映射到 Golden Time 语义 token。
+ * - .dark 保留 Golden Time 暗色 token，供未来双主题切换，当前默认不启用。
+ */
+
+:root {
+  /* === Brand scale（棕金主色阶，从浅奶油到深棕） === */
+  --brand-50: #f5f2eb;
+  --brand-100: #eae6db;
+  --brand-200: #d6d0c2;
+  --brand-300: #cbc0aa;
+  --brand-400: #b8a888;
+  --brand-500: #9b965f;
+  --brand-600: #3b352b;
+  --brand-700: #2d2820;
+  --brand-800: #1f1c17;
+  --brand-900: #161310;
+
+  /* === Surface（暖白浅色） === */
+  --background: #fbfaf9;
+  --muted: #eae6db;
+  --card: #fbfaf9;
+  --popover: #fbfaf9;
+
+  /* === Text === */
+  --foreground: #3b352b;
+  --muted-foreground: #978365;
+  --card-foreground: #3b352b;
+  --popover-foreground: #3b352b;
+  --accent-foreground: #574d42;
+  --secondary-foreground: #fbfaf9;
+
+  /* === Action === */
+  --primary: var(--brand-600);
+  --primary-foreground: #fbfaf9;
+  --accent: #cbc0aa;
+  --input: #eae6db;
+  --border: #e1dccf;
+  --secondary: #9b965f;
+  --ring: var(--brand-600);
+
+  /* === Feedback === */
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+
+  /* === Chart === */
+  --chart-1: #d6d5c2;
+  --chart-2: #5e4545;
+  --chart-3: #b0b3a2;
+  --chart-4: #9b965f;
+  --chart-5: #f79b45;
+
+  /* === Sidebar === */
+  --sidebar: #fbfaf9;
+  --sidebar-foreground: #3b352b;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #cbc0aa;
+  --sidebar-accent-foreground: #3b352b;
+  --sidebar-border: #e1dccf;
+  --sidebar-ring: var(--ring);
+
+  /* === Typography === */
+  --font-sans: 'Fraunces', ui-serif, serif;
+  --font-serif: 'Fraunces', ui-serif, serif;
+  --font-mono: monospace;
+  --tracking-normal: 0em;
+
+  /* === Radius（Golden Time 32px 大圆角签名） === */
+  --radius: 32px;
+
+  /* === Spacing（4.8px 基） === */
+  --spacing: 4.8px;
+
+  /* === Shadow（Golden Time 哲学：去阴影，靠色块与边框建立层次） === */
+  --shadow-2xs: transparent;
+  --shadow-xs: 0px 2px 4px 0px transparent;
+  --shadow-sm: 0px 2px 4px 0px transparent;
+  --shadow: 0px 2px 4px 0px transparent;
+  --shadow-md: 0px 2px 4px 0px transparent;
+  --shadow-lg: 0px 2px 4px 0px transparent;
+  --shadow-xl: 0px 2px 4px 0px transparent;
+  --shadow-2xl: transparent;
+
+  /* === Status 补充（Golden Time 仅含 destructive，这里补 success/warning） === */
+  --success: #13b15a;
+  --success-foreground: #ffffff;
+  --warning: #f79b45;
+  --warning-foreground: #3b352b;
+
+  /* ============================================================
+     兼容映射层：旧 FinTech 幽灵 token → Golden Time 语义 token
+     仅供尚未重做的业务页面兜底，新代码请直接使用上方 Golden Time token。
+     ============================================================ */
+
+  /* base 阶梯 → 暖深棕色（深色块 / scrollbar 等） */
+  --color-base-950: #161310;
+  --color-base-900: #1f1c17;
+  --color-base-800: #2d2820;
+  --color-base-700: #3b352b;
+  --color-base-100: #fbfaf9;
+  --color-base-white: #fbfaf9;
+
+  /* 文本 / 边框 */
+  --color-text: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-border: var(--border);
+
+  /* 强调色 */
+  --color-accent-primary: var(--primary);
+  --color-accent-secondary: var(--secondary);
+
+  /* 状态色 */
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--destructive);
+
+  /* 玻璃拟态 → 浅色下退化为 card 表面 */
+  --glass-bg: var(--card);
+  --glass-border: var(--border);
+
+  /* 间距阶梯（基于 4.8px） */
+  --space-xs: 4.8px;
+  --space-sm: 9.6px;
+  --space-md: 14.4px;
+  --space-lg: 19.2px;
+  --space-xl: 28.8px;
+
+  /* 过渡 */
+  --transition-fast: 0.16s ease;
+  --transition-standard: 0.2s ease;
+}
+
+/* === 暗色主题 token（保留备用，当前默认不启用） === */
+.dark {
+  --background: #060201;
+  --muted: #3b342b;
+  --card: #060201;
+  --popover: #060201;
+
+  --foreground: #e3dfd6;
+  --muted-foreground: #a89c8a;
+  --card-foreground: #e3dfd6;
+  --popover-foreground: #e3dfd6;
+  --accent-foreground: #e3dfd6;
+  --secondary-foreground: #e3dfd6;
+
+  --primary: #e3dfd6;
+  --primary-foreground: #060201;
+  --accent: #806a4d;
+  --input: #3b342b;
+  --border: #2d2b26;
+  --secondary: #605039;
+  --ring: #cbb99f;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+
+  --chart-1: #b39d80;
+  --chart-2: #7a5f52;
+  --chart-3: #f2e1ca;
+  --chart-4: #8c7773;
+  --chart-5: #e65c33;
+
+  --sidebar: #060201;
+  --sidebar-foreground: #e3dfd6;
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #806a4d;
+  --sidebar-accent-foreground: #e3dfd6;
+  --sidebar-border: #494136;
+  --sidebar-ring: var(--ring);
+
+  /* 暗色兼容映射同步 */
+  --color-base-950: #060201;
+  --color-base-900: #e3dfd6;
+  --color-base-800: #060201;
+  --color-base-700: #3b342b;
+  --color-base-100: #060201;
+  --color-base-white: #e3dfd6;
+  --color-text: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent-primary: var(--primary);
+  --color-accent-secondary: var(--secondary);
+  --glass-bg: var(--card);
+  --glass-border: var(--border);
+}

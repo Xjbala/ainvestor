@@ -33,24 +33,24 @@ export const DataViewer: React.FC = () => {
             {/* Header */}
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
-                    <Table2 className="w-8 h-8 text-indigo-600" />
-                    <h1 className="text-2xl font-bold text-gray-900">数据查看</h1>
+                    <Table2 className="w-8 h-8 text-primary" />
+                    <h1 className="text-2xl font-bold text-foreground">数据查看</h1>
                 </div>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                     浏览采集数据 — 覆盖率看板、财务报表、年报内容、新闻舆情
                 </p>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-xl w-fit">
+            <div className="flex gap-1 mb-6 bg-muted p-1 rounded-vibe w-fit">
                 {TAB_CONFIG.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex items-center gap-1.5 px-5 py-2 rounded-vibe-sm text-sm font-medium transition-all ${
                             activeTab === tab.id
-                                ? 'bg-white text-indigo-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-card text-primary shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         {tab.icon}
