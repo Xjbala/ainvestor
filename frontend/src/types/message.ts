@@ -84,7 +84,7 @@ export interface AnalysisSession {
   id: string | null;
   tickers: string[];
   date: string;
-  status: 'idle' | 'running' | 'completed' | 'failed';
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
   agents: Record<string, AgentState>;
   conferenceMessages: ConferenceMessage[];
   predictions: Record<string, Prediction[]>;

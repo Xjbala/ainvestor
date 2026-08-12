@@ -36,7 +36,7 @@ const initialState: AnalysisSession = {
 // Action 类型
 type Action =
     | { type: 'SESSION_START'; payload: SessionData & { id: string } }
-    | { type: 'SESSION_END'; payload: { success: boolean } }
+    | { type: 'SESSION_END'; payload: { success: boolean; status?: AnalysisSession['status'] } }
     | { type: 'AGENT_START'; payload: AgentData }
     | { type: 'AGENT_PROGRESS'; payload: AgentData }
     | { type: 'AGENT_COMPLETE'; payload: AgentData & { timestamp?: string; message_id?: string } }
@@ -79,6 +79,13 @@ export interface AnalysisMetrics {
 function analysisReducer(state: AnalysisSession, action: Action): AnalysisSession {
     switch (action.type) {
         case 'SESSION_START':
+            if (state.id === action.payload.id && state.status === 'running') {
+                return {
+                    ...state,
+                    tickers: action.payload.tickers,
+                    date: action.payload.date,
+                };
+            }
             return {
                 ...initialState,
                 id: action.payload.id,
@@ -90,7 +97,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
         case 'SESSION_END':
             return {
                 ...state,
-                status: action.payload.success ? 'completed' : 'failed',
+                status: action.payload.status || (action.payload.success ? 'completed' : 'failed'),
             };
 
         case 'AGENT_START': {
@@ -345,12 +352,19 @@ export function useAnalysisStore() {
                 break;
             }
 
-            case 'session_end':
+            case 'session_end': {
+                const status = data.status;
                 dispatch({
                     type: 'SESSION_END',
-                    payload: { success: Boolean(data.success) },
+                    payload: {
+                        success: Boolean(data.success),
+                        status: status === 'cancelled' || status === 'completed' || status === 'failed'
+                            ? status
+                            : undefined,
+                    },
                 });
                 break;
+            }
 
             case 'analysis_start':
                 dispatch({ type: 'AGENT_START', payload: extractAgentData(data) });
@@ -510,7 +524,7 @@ export function useAnalysisStore() {
         if (recommendation === '分析中' && state.status === 'completed') {
             recommendation = '—';
         }
-        if (recommendation === '分析中' && state.status === 'failed') {
+        if (recommendation === '分析中' && (state.status === 'failed' || state.status === 'cancelled')) {
             recommendation = '—';
         }
 

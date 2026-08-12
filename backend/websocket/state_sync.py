@@ -100,11 +100,12 @@ class WebSocketStateSync:
         )
         await self.broadcast(message)
     
-    async def on_session_end(self, success: bool = True):
+    async def on_session_end(self, success: bool = True, status: Optional[str] = None):
         """会话结束"""
         message = create_session_end_message(
             session_id=self._session_id,
             success=success,
+            status=status,
         )
         await self.broadcast(message)
     

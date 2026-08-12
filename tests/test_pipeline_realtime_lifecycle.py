@@ -44,6 +44,13 @@ class FailingAgent:
         raise RuntimeError("model unavailable")
 
 
+class CancelledAgent:
+    name = "valuation_analyst"
+
+    async def reply(self, message):
+        raise asyncio.CancelledError()
+
+
 class TestPipelineRealtimeLifecycle(unittest.TestCase):
     def test_reply_emits_start_tool_progress_and_completion_progress(self):
         asyncio.run(self._test_reply_emits_start_tool_progress_and_completion_progress())
@@ -93,6 +100,27 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
         self.assertEqual("failed", sync.events[-1][0])
         self.assertEqual("risk_manager", sync.events[-1][1])
         self.assertEqual("risk_assessment", sync.events[-1][3])
+
+    def test_reply_cancellation_is_not_reported_as_agent_failure(self):
+        asyncio.run(self._test_reply_cancellation_is_not_reported_as_agent_failure())
+
+    async def _test_reply_cancellation_is_not_reported_as_agent_failure(self):
+        sync = FakeSync()
+        pipeline = RatingPipeline(
+            analysts=[],
+            risk_manager=None,
+            portfolio_manager=None,
+            state_sync=sync,
+        )
+
+        with self.assertRaises(asyncio.CancelledError):
+            await pipeline._reply_with_lifecycle(
+                CancelledAgent(),
+                Msg(name="system", content="分析", role="user"),
+                phase="analysis",
+            )
+
+        self.assertNotIn("failed", [event[0] for event in sync.events])
 
 
 if __name__ == "__main__":

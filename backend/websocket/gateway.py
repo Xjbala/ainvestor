@@ -20,6 +20,7 @@ from .message import (
     MessageType,
     EventType,
     create_error_message,
+    create_session_start_message,
 )
 from .state_sync import WebSocketStateSync
 
@@ -83,6 +84,7 @@ class WebSocketGateway:
         self._current_tasks: Dict[str, asyncio.Task] = {}
         self._session_syncs: Dict[str, WebSocketStateSync] = {}
         self._client_sessions: Dict[WebSocketServerProtocol, str] = {}
+        self._session_metadata: Dict[str, Dict[str, Any]] = {}
     
     def set_analysis_handler(self, handler: Callable):
         """
@@ -157,7 +159,12 @@ class WebSocketGateway:
             if msg_type == "command" and event == "stop_analysis":
                 await self._handle_stop_analysis(websocket, data)
                 return
-            
+
+            # 处理分析会话重连请求
+            if msg_type == "command" and event == "resume_analysis":
+                await self._handle_resume_analysis(websocket, data)
+                return
+
             logger.debug(f"Received message: {data}")
             
         except json.JSONDecodeError as e:
@@ -214,32 +221,49 @@ class WebSocketGateway:
                 await websocket.send(error_msg.to_json())
                 return
         
+        # 如果未配置分析处理器，不创建无法执行的会话。
+        if not self._analysis_handler:
+            error_msg = create_error_message(
+                session_id="",
+                error="Analysis handler not configured",
+            )
+            await websocket.send(error_msg.to_json())
+            return
+
         # 生成独立会话和同步器，避免并发分析覆盖其他会话的 session_id。
         session_id = str(uuid.uuid4())
         session_sync = WebSocketStateSync(session_id=session_id)
         await session_sync.register(websocket)
         self._session_syncs[session_id] = session_sync
         self._client_sessions[websocket] = session_id
+        self._session_metadata[session_id] = {
+            "tickers": tickers,
+            "date": date,
+            "started": False,
+        }
         logger.info(
             "start_analysis received: session=%s tickers=%s client=%s",
             session_id,
             tickers,
             getattr(websocket, "remote_address", None),
         )
+        await session_sync.on_session_start(tickers, date)
 
-        # 如果有分析处理器，异步启动分析任务
-        if self._analysis_handler:
-            task = asyncio.create_task(
-                self._run_analysis(tickers, date, session_id, session_sync)
-            )
-            self._current_tasks[session_id] = task
-        else:
-            error_msg = create_error_message(
-                session_id=session_id,
-                error="Analysis handler not configured",
-            )
-            await websocket.send(error_msg.to_json())
+        # 异步启动分析任务
+        task = asyncio.create_task(
+            self._run_analysis(tickers, date, session_id, session_sync)
+        )
+        self._current_tasks[session_id] = task
     
+    def _cleanup_session(self, session_id: str):
+        """清理已结束分析会话的运行时状态。"""
+        self._current_tasks.pop(session_id, None)
+        self._session_syncs.pop(session_id, None)
+        self._session_metadata.pop(session_id, None)
+        for client, client_session_id in list(self._client_sessions.items()):
+            if client_session_id == session_id:
+                self._client_sessions.pop(client, None)
+
     async def _run_analysis(
         self,
         tickers: list,
@@ -248,10 +272,16 @@ class WebSocketGateway:
         session_sync: WebSocketStateSync,
     ):
         """运行单个会话的分析任务。"""
+        metadata = self._session_metadata.get(session_id)
+        if metadata:
+            metadata["started"] = True
         try:
-            await session_sync.on_session_start(tickers, date)
             await self._analysis_handler(tickers, date, session_id, session_sync)
-            await session_sync.on_session_end(success=True)
+            await session_sync.on_session_end(success=True, status="completed")
+        except asyncio.CancelledError:
+            logger.info("Analysis task cancelled: session=%s", session_id)
+            await session_sync.on_session_end(success=False, status="cancelled")
+            raise
         except Exception as e:
             logger.error(f"Analysis failed: {e}")
             error_msg = create_error_message(
@@ -260,13 +290,9 @@ class WebSocketGateway:
                 details=str(e),
             )
             await session_sync.broadcast(error_msg)
-            await session_sync.on_session_end(success=False)
+            await session_sync.on_session_end(success=False, status="failed")
         finally:
-            self._current_tasks.pop(session_id, None)
-            self._session_syncs.pop(session_id, None)
-            for client, client_session_id in list(self._client_sessions.items()):
-                if client_session_id == session_id:
-                    self._client_sessions.pop(client, None)
+            self._cleanup_session(session_id)
     
     async def _handle_stop_analysis(self, websocket: WebSocketServerProtocol, data: Dict[str, Any]):
         """停止当前连接发起的分析会话。"""
@@ -276,24 +302,60 @@ class WebSocketGateway:
             logger.info("No running analysis task for requesting client")
             return
 
-        logger.info("Stop analysis requested: session=%s", session_id)
+        logger.info(
+            "Stop analysis requested: session=%s client=%s",
+            session_id,
+            getattr(websocket, "remote_address", None),
+        )
         session_sync = self._session_syncs.get(session_id)
+        metadata = self._session_metadata.get(session_id)
         task.cancel()
+        await asyncio.sleep(0)
+        if task.cancelled() and metadata and not metadata["started"]:
+            logger.info("Analysis task cancelled before start: session=%s", session_id)
+            if session_sync:
+                await session_sync.on_session_end(success=False, status="cancelled")
+            self._cleanup_session(session_id)
+            return
+
         try:
             await task
         except asyncio.CancelledError:
-            logger.info("Analysis task cancelled: session=%s", session_id)
+            logger.info("Analysis task cancellation completed: session=%s", session_id)
 
-        try:
-            from ..persistence.compat import get_database
+    async def _handle_resume_analysis(
+        self,
+        websocket: WebSocketServerProtocol,
+        data: Dict[str, Any],
+    ):
+        """将断线重连的客户端重新绑定到仍在运行的分析会话。"""
+        requested_session_id = data.get("data", {}).get("session_id")
+        session_id = requested_session_id if isinstance(requested_session_id, str) else ""
+        task = self._current_tasks.get(session_id)
+        session_sync = self._session_syncs.get(session_id)
+        metadata = self._session_metadata.get(session_id)
 
-            db = await get_database()
-            await db.update_session_status(session_id, "stopped")
-        except Exception as e:
-            logger.error("Failed to update stopped session %s: %s", session_id, e)
+        if not session_id or not task or task.done() or not session_sync or not metadata:
+            await websocket.send(create_error_message(
+                session_id=session_id,
+                error="Analysis session is not running",
+            ).to_json())
+            return
 
-        if session_sync:
-            await session_sync.on_session_end(success=False)
+        previous_session_id = self._client_sessions.get(websocket)
+        if previous_session_id and previous_session_id != session_id:
+            previous_sync = self._session_syncs.get(previous_session_id)
+            if previous_sync:
+                await previous_sync.unregister(websocket)
+
+        await session_sync.register(websocket)
+        self._client_sessions[websocket] = session_id
+        await websocket.send(create_session_start_message(
+            session_id=session_id,
+            tickers=metadata["tickers"],
+            date=metadata["date"],
+        ).to_json())
+        logger.info("Analysis session resumed: session=%s", session_id)
 
 
 async def run_gateway(

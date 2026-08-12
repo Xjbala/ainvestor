@@ -149,3 +149,11 @@ export function createStopAnalysisCommand() {
         data: {},
     };
 }
+
+export function createResumeAnalysisCommand(sessionId: string) {
+    return {
+        type: 'command',
+        event: 'resume_analysis',
+        data: { session_id: sessionId },
+    };
+}

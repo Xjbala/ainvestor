@@ -127,14 +127,15 @@ async def run_analysis(
     
     logger.info(f"Starting analysis: session={session_id}, tickers={tickers}, date={date}")
     
-    # 获取数据库
-    db = await get_database()
-    
-    # 创建会话记录 (使用网关传入的session_id以确保一致性)
-    session = await db.create_session(tickers=tickers, date=date, session_id=session_id)
-    await db.update_session_status(session.id, "running")
-    
+    session = None
     try:
+        # 获取数据库
+        db = await get_database()
+
+        # 创建会话记录 (使用网关传入的session_id以确保一致性)
+        session = await db.create_session(tickers=tickers, date=date, session_id=session_id)
+        await db.update_session_status(session.id, "running")
+
         # 创建分析师
         analysts = []
         for analyst_type in ANALYST_TYPES:
@@ -210,12 +211,21 @@ async def run_analysis(
         await db.update_session_status(session.id, "completed")
         logger.info(f"Analysis completed: session={session.id}")
 
+    except asyncio.CancelledError:
+        logger.info("Analysis cancellation propagated: session=%s", session_id)
+        if session:
+            try:
+                await db.update_session_status(session.id, "cancelled")
+            except Exception:
+                logger.exception("Failed to persist cancelled session=%s", session_id)
+        raise
     except Exception as e:
         logger.error(f"Analysis failed: {e}", exc_info=True)
-        try:
-            await db.update_session_status(session.id, "failed")
-        except Exception:
-            pass
+        if session:
+            try:
+                await db.update_session_status(session.id, "failed")
+            except Exception:
+                pass
         raise
 
 

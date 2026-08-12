@@ -27,7 +27,7 @@ interface AIModeLayoutProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metrics?: any;
     report?: string;
-    analysisStatus?: 'idle' | 'running' | 'completed' | 'failed';
+    analysisStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
     onStopAnalysis?: () => void;
 }
 
@@ -375,7 +375,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         <div className="meta-item">
                             <div className="meta-label">分析状态</div>
                             <div className={`meta-value status-${analysisStatus || 'idle'}`}>
-                                {analysisStatus === 'completed' ? '已完成' : analysisStatus === 'running' ? '进行中' : analysisStatus === 'failed' ? '已终止' : '待启动'}
+                                {analysisStatus === 'completed' ? '已完成' : analysisStatus === 'running' ? '进行中' : analysisStatus === 'cancelled' ? '已取消' : analysisStatus === 'failed' ? '执行失败' : '待启动'}
                             </div>
                         </div>
                     </div>
@@ -398,9 +398,9 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                 />
 
                 <DecisionFooter
-                status={analysisStatus === 'completed' || analysisStatus === 'failed' ? 'ready' : 'analyzing'}
+                status={analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled' ? 'ready' : 'analyzing'}
                 recommendation={
-                    analysisStatus === 'completed' || analysisStatus === 'failed'
+                    analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled'
                         ? (metrics?.recommendation && metrics.recommendation !== '分析中'
                             ? metrics.recommendation
                             : '—')
@@ -411,14 +411,14 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         ? metrics.targetPrice
                         : (valuationBreakdown?.blendedPrice != null && valuationBreakdown.blendedPrice > 0
                             ? `¥${valuationBreakdown.blendedPrice.toFixed(2)}`
-                            : (analysisStatus === 'completed' || analysisStatus === 'failed' ? '—' : '计算中...'))
+                            : (analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled' ? '—' : '计算中...'))
                 }
                 returnRate={
                     isUnavailableTargetPrice(metrics?.targetPrice)
                         ? '无法评估'
                         : (upsideFromBreakdown != null
                             ? Number(upsideFromBreakdown.toFixed(1))
-                            : (analysisStatus === 'completed' || analysisStatus === 'failed' ? '—' : '计算中...'))
+                            : (analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled' ? '—' : '计算中...'))
                 }
                 onViewDetail={() => {
                     if (report && report.trim().length > 0) {

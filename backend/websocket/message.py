@@ -108,13 +108,20 @@ def create_session_start_message(session_id: str, tickers: list, date: str) -> W
     )
 
 
-def create_session_end_message(session_id: str, success: bool = True) -> WebSocketMessage:
+def create_session_end_message(
+    session_id: str,
+    success: bool = True,
+    status: Optional[str] = None,
+) -> WebSocketMessage:
     """创建会话结束消息"""
     return WebSocketMessage(
         type=MessageType.SYSTEM,
         event=EventType.SESSION_END,
         session_id=session_id,
-        data={"success": success}
+        data={
+            "success": success,
+            "status": status or ("completed" if success else "failed"),
+        }
     )
 
 

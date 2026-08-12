@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { ToastProvider } from './components/Common/Toast';
 import { useWebSocket } from './hooks/useWebSocket';
-import { createStartAnalysisCommand, createStopAnalysisCommand } from './hooks/useWebSocket';
+import { createStartAnalysisCommand, createStopAnalysisCommand, createResumeAnalysisCommand } from './hooks/useWebSocket';
 import { useAnalysisStore } from './stores/analysisStore';
 import { useModeStore } from './stores/modeStore';
 import { Sidebar } from './components/Sidebar'; // Layout/Sidebar logic
@@ -57,21 +57,24 @@ function App() {
 
   // Track if we've connected before to detect reconnections
   const hasConnectedBefore = useRef(false);
-  const hasLiveSession = useRef(false);
+  const activeSessionIdRef = useRef<string | null>(null);
 
   const { connect, send } = useWebSocket({
     url: WS_URL,
     onMessage: (message) => {
       if (message.event === 'session_start') {
-        hasLiveSession.current = true;
+        activeSessionIdRef.current = message.session_id || null;
+      }
+      if (message.event === 'session_end') {
+        activeSessionIdRef.current = null;
       }
       handleMessage(message);
     },
     onOpen: () => {
       console.log('Connected to analysis server');
-      if (hasConnectedBefore.current && state.status === 'running') {
-        console.log('[Session Sync] Server reconnected, resetting running state');
-        dispatch({ type: 'SESSION_END', payload: { success: false } });
+      if (hasConnectedBefore.current && activeSessionIdRef.current) {
+        console.log('[Session Sync] Resuming active analysis session');
+        send(createResumeAnalysisCommand(activeSessionIdRef.current));
       }
       hasConnectedBefore.current = true;
     },
@@ -86,7 +89,6 @@ function App() {
   // Stop analysis handler
   const handleStopAnalysis = () => {
     send(createStopAnalysisCommand());
-    dispatch({ type: 'SESSION_END', payload: { success: false } });
   };
 
   // 历史会话仅在工作台和报告页按需加载，避免覆盖实时协作状态。
