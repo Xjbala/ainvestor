@@ -9,12 +9,12 @@ interface SOTPTabPanelProps {
 
 export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPanelProps) {
     if (loading && !data) {
-        return <div className="text-center py-12 text-gray-500">加载 SOTP…</div>;
+        return <div className="text-center py-12 text-muted-foreground">加载 SOTP…</div>;
     }
 
     if (!data) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 <p className="text-lg mb-2">暂无 SOTP 数据</p>
                 <p className="text-sm mb-4">需先有 ≥2 个经营分部（年报抽取或手工导入）</p>
                 {onExtract && (
@@ -28,7 +28,7 @@ export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPa
 
     if (data.error && !data.applicable) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 <p className="text-lg mb-2">SOTP 暂不可用</p>
                 <p className="text-sm mb-4">{data.error}</p>
                 {onExtract && (
@@ -48,7 +48,7 @@ export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPa
     return (
         <>
             <div className="mb-4 flex flex-wrap justify-between items-center gap-2">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                     报告期: {data.report_period || '—'} | 来源: {data.segment_source || '—'} | 置信度:{' '}
                     {data.segment_confidence || data.confidence || '—'}
                 </div>
@@ -90,7 +90,7 @@ export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPa
                         <span className="metric-value">
                             {discount != null ? `${discount}%` : '—'}
                             {data.conglomerate_discount_flag && (
-                                <span className="ml-1 text-amber-600 text-xs">⚠ 显著</span>
+                                <span className="ml-1 text-warning-foreground text-xs">⚠ 显著</span>
                             )}
                         </span>
                     </div>
@@ -114,8 +114,8 @@ export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPa
                 </div>
             </div>
 
-            <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                     分部明细 ({segments.length})
                 </h3>
                 <div className="overflow-x-auto">
@@ -156,7 +156,7 @@ export function SOTPTabPanel({ data, loading, onExtract, extracting }: SOTPTabPa
             </div>
 
             {Array.isArray(data.notes) && data.notes.length > 0 && (
-                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded text-sm text-amber-900">
+                <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded text-sm text-warning-foreground">
                     <ul className="list-disc list-inside space-y-1">
                         {data.notes.map((n: string, i: number) => (
                             <li key={i}>{n}</li>

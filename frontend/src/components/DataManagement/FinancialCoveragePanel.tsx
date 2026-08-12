@@ -36,18 +36,18 @@ const STATUS_STYLE: Record<
 > = {
     complete: {
         label: '完整',
-        className: 'bg-green-50 text-green-700 border-green-200',
-        dot: 'bg-green-500',
+        className: 'bg-[rgba(19,177,90,0.06)] text-success border-[rgba(19,177,90,0.2)]',
+        dot: 'bg-success',
     },
     partial: {
         label: '部分',
-        className: 'bg-amber-50 text-amber-700 border-amber-200',
-        dot: 'bg-amber-500',
+        className: 'bg-[rgba(244,179,102,0.1)] text-warning border-[rgba(244,179,102,0.3)]',
+        dot: 'bg-warning',
     },
     missing: {
         label: '缺失',
-        className: 'bg-red-50 text-red-700 border-red-200',
-        dot: 'bg-red-500',
+        className: 'bg-[rgba(239,68,68,0.06)] text-destructive border-[rgba(239,68,68,0.2)]',
+        dot: 'bg-destructive',
     },
 };
 
@@ -220,7 +220,7 @@ export const FinancialCoveragePanel: React.FC<{
                         setYears(defaultYears(Number(e.target.value)));
                         setPage(1);
                     }}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                    className="px-3 py-1.5 border border-input rounded-vibe-sm text-sm"
                 >
                     {[3, 5, 8, 10].map((n) => (
                         <option key={n} value={n}>
@@ -229,7 +229,7 @@ export const FinancialCoveragePanel: React.FC<{
                     ))}
                 </select>
 
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                <label className="inline-flex items-center gap-2 text-sm text-foreground">
                     <input
                         type="checkbox"
                         checked={onlyGaps}
@@ -237,7 +237,7 @@ export const FinancialCoveragePanel: React.FC<{
                             setOnlyGaps(e.target.checked);
                             setPage(1);
                         }}
-                        className="rounded border-gray-300"
+                        className="rounded border-input"
                     />
                     仅看缺口公司
                 </label>
@@ -253,7 +253,7 @@ export const FinancialCoveragePanel: React.FC<{
                             }
                         }}
                         placeholder="搜索代码/名称"
-                        className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm w-44"
+                        className="px-3 py-1.5 border border-input rounded-vibe-sm text-sm w-44"
                     />
                     <button
                         type="button"
@@ -261,7 +261,7 @@ export const FinancialCoveragePanel: React.FC<{
                             setAppliedSearch(search.trim());
                             setPage(1);
                         }}
-                        className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                        className="px-3 py-1.5 text-sm rounded-vibe-sm border border-input text-foreground hover:bg-muted"
                     >
                         搜索
                     </button>
@@ -271,7 +271,7 @@ export const FinancialCoveragePanel: React.FC<{
                     type="button"
                     onClick={() => load()}
                     disabled={isLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-vibe-sm border border-input text-foreground hover:bg-muted disabled:opacity-50"
                 >
                     <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                     刷新
@@ -281,7 +281,7 @@ export const FinancialCoveragePanel: React.FC<{
                     type="button"
                     onClick={handleForceScan}
                     disabled={isScanning || isLoading}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-vibe-sm border border-brand-200 text-brand-700 bg-brand-50 hover:bg-brand-100 disabled:opacity-50"
                 >
                     {isScanning ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -295,7 +295,7 @@ export const FinancialCoveragePanel: React.FC<{
                     type="button"
                     onClick={() => handleRepair()}
                     disabled={isRepairing}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-vibe-sm bg-primary text-primary-foreground hover:bg-brand-700 disabled:opacity-50"
                 >
                     {isRepairing ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -307,17 +307,17 @@ export const FinancialCoveragePanel: React.FC<{
             </div>
 
             {snapshotHint && (
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-muted-foreground">
                     数据来源：{snapshotHint}
                 </div>
             )}
 
             {repairMsg && (
                 <div
-                    className={`text-sm rounded-lg px-3 py-2 border ${
+                    className={`text-sm rounded-vibe-sm px-3 py-2 border ${
                         repairMsg.includes('已创建') || repairMsg.includes('已扫描')
-                            ? 'bg-green-50 border-green-200 text-green-700'
-                            : 'bg-amber-50 border-amber-200 text-amber-800'
+                            ? 'bg-[rgba(19,177,90,0.06)] border-[rgba(19,177,90,0.2)] text-success'
+                            : 'bg-[rgba(244,179,102,0.1)] border-[rgba(244,179,102,0.3)] text-warning'
                     }`}
                 >
                     {repairMsg}
@@ -325,7 +325,7 @@ export const FinancialCoveragePanel: React.FC<{
             )}
 
             {error && (
-                <div className="flex items-center gap-2 text-red-600 text-sm">
+                <div className="flex items-center gap-2 text-destructive text-sm">
                     <AlertCircle className="w-4 h-4" /> {error}
                 </div>
             )}
@@ -387,18 +387,18 @@ export const FinancialCoveragePanel: React.FC<{
             )}
 
             {/* 公司矩阵表 */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                        <ShieldAlert className="w-4 h-4 text-indigo-600" />
+            <div className="border border-border rounded-vibe overflow-hidden bg-card">
+                <div className="px-4 py-3 bg-muted border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <ShieldAlert className="w-4 h-4 text-primary" />
                         公司覆盖矩阵
                         {data && (
-                            <span className="text-xs text-gray-500 font-normal">
+                            <span className="text-xs text-muted-foreground font-normal">
                                 共 {data.total} 家 · 第 {page}/{totalPages} 页
                             </span>
                         )}
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                         {(['complete', 'partial', 'missing'] as CoverageCellStatus[]).map((s) => (
                             <span key={s} className="inline-flex items-center gap-1">
                                 <span className={`w-2 h-2 rounded-full ${STATUS_STYLE[s].dot}`} />
@@ -409,13 +409,13 @@ export const FinancialCoveragePanel: React.FC<{
                 </div>
 
                 {isLoading && (
-                    <div className="flex items-center justify-center py-16 text-gray-500">
+                    <div className="flex items-center justify-center py-16 text-muted-foreground">
                         <Loader2 className="w-5 h-5 animate-spin mr-2" /> 扫描中...
                     </div>
                 )}
 
                 {!isLoading && data && data.companies.length === 0 && (
-                    <div className="py-14 text-center text-gray-500 text-sm">
+                    <div className="py-14 text-center text-muted-foreground text-sm">
                         {onlyGaps ? '当前范围内没有缺口公司' : '暂无公司数据'}
                     </div>
                 )}
@@ -424,33 +424,33 @@ export const FinancialCoveragePanel: React.FC<{
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="bg-white border-b border-gray-100">
-                                    <th className="px-3 py-2 text-left sticky left-0 bg-white z-10">
+                                <tr className="bg-card border-b border-border">
+                                    <th className="px-3 py-2 text-left sticky left-0 bg-card z-10">
                                         <input
                                             type="checkbox"
                                             checked={allPageSelected}
                                             onChange={toggleAllPage}
-                                            className="rounded border-gray-300"
+                                            className="rounded border-input"
                                         />
                                     </th>
-                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 sticky left-8 bg-white z-10 min-w-[140px]">
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground sticky left-8 bg-card z-10 min-w-[140px]">
                                         公司
                                     </th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">
                                         覆盖率
                                     </th>
                                     {yearList.map((y) =>
                                         reportTypes.map((rt) => (
                                             <th
                                                 key={cellKey(y, rt)}
-                                                className="px-2 py-2 text-center text-[11px] font-medium text-gray-500 min-w-[64px]"
+                                                className="px-2 py-2 text-center text-[11px] font-medium text-muted-foreground min-w-[64px]"
                                             >
                                                 <div>{y}</div>
-                                                <div className="text-gray-400">{REPORT_LABEL[rt] || rt}</div>
+                                                <div className="text-muted-foreground">{REPORT_LABEL[rt] || rt}</div>
                                             </th>
                                         )),
                                     )}
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-muted-foreground">
                                         操作
                                     </th>
                                 </tr>
@@ -480,23 +480,23 @@ export const FinancialCoveragePanel: React.FC<{
                 )}
 
                 {data && totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted">
                         <button
                             type="button"
                             disabled={isLoading || page <= 1}
                             onClick={() => loadPage(Math.max(1, page - 1))}
-                            className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40"
+                            className="px-3 py-1 text-sm rounded border border-input disabled:opacity-40"
                         >
                             上一页
                         </button>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                             {page} / {totalPages}
                         </span>
                         <button
                             type="button"
                             disabled={isLoading || page >= totalPages}
                             onClick={() => loadPage(Math.min(totalPages, page + 1))}
-                            className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40"
+                            className="px-3 py-1 text-sm rounded border border-input disabled:opacity-40"
                         >
                             下一页
                         </button>
@@ -519,14 +519,14 @@ function SummaryCard({
     tone?: 'slate' | 'blue' | 'green' | 'amber' | 'red';
 }) {
     const tones = {
-        slate: 'bg-white border-gray-200 text-gray-900',
-        blue: 'bg-blue-50 border-blue-100 text-blue-800',
-        green: 'bg-green-50 border-green-100 text-green-800',
-        amber: 'bg-amber-50 border-amber-100 text-amber-800',
-        red: 'bg-red-50 border-red-100 text-red-800',
+        slate: 'bg-card border-border text-foreground',
+        blue: 'bg-brand-50 border-brand-100 text-brand-800',
+        green: 'bg-[rgba(19,177,90,0.06)] border-[rgba(19,177,90,0.15)] text-success',
+        amber: 'bg-[rgba(244,179,102,0.1)] border-[rgba(244,179,102,0.2)] text-warning',
+        red: 'bg-[rgba(239,68,68,0.06)] border-[rgba(239,68,68,0.15)] text-destructive',
     };
     return (
-        <div className={`rounded-xl border px-3 py-3 ${tones[tone]}`}>
+        <div className={`rounded-vibe border px-3 py-3 ${tones[tone]}`}>
             <div className="text-[11px] opacity-70">{label}</div>
             <div className="text-xl font-semibold mt-1">{value}</div>
             {hint && <div className="text-[11px] opacity-70 mt-1">{hint}</div>}
@@ -549,13 +549,13 @@ function BreakdownTable({
     }>;
 }) {
     return (
-        <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
-            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-sm font-medium text-gray-800">
+        <div className="border border-border rounded-vibe overflow-hidden bg-card">
+            <div className="px-3 py-2 bg-muted border-b border-border text-sm font-medium text-foreground">
                 {title}
             </div>
             <table className="w-full text-sm">
                 <thead>
-                    <tr className="text-xs text-gray-500 border-b border-gray-100">
+                    <tr className="text-xs text-muted-foreground border-b border-border">
                         <th className="text-left px-3 py-2 font-medium">维度</th>
                         <th className="text-right px-3 py-2 font-medium">完整</th>
                         <th className="text-right px-3 py-2 font-medium">部分</th>
@@ -567,12 +567,12 @@ function BreakdownTable({
                     {rows.map((r) => {
                         const rate = r.total ? r.complete / r.total : 0;
                         return (
-                            <tr key={r.key} className="border-t border-gray-50">
-                                <td className="px-3 py-2 text-gray-800">{r.label}</td>
-                                <td className="px-3 py-2 text-right text-green-700">{r.complete}</td>
-                                <td className="px-3 py-2 text-right text-amber-700">{r.partial}</td>
-                                <td className="px-3 py-2 text-right text-red-700">{r.missing}</td>
-                                <td className="px-3 py-2 text-right font-mono text-gray-700">
+                            <tr key={r.key} className="border-t border-border">
+                                <td className="px-3 py-2 text-foreground">{r.label}</td>
+                                <td className="px-3 py-2 text-right text-success">{r.complete}</td>
+                                <td className="px-3 py-2 text-right text-warning">{r.partial}</td>
+                                <td className="px-3 py-2 text-right text-destructive">{r.missing}</td>
+                                <td className="px-3 py-2 text-right font-mono text-foreground">
                                     {formatPct(rate)}
                                 </td>
                             </tr>
@@ -617,18 +617,18 @@ function CompanyCoverageRow({
 
     return (
         <>
-            <tr className="border-t border-gray-100 hover:bg-slate-50/60">
+            <tr className="border-t border-border hover:bg-muted/60">
                 <td className="px-3 py-2 sticky left-0 bg-inherit z-10">
                     <input
                         type="checkbox"
                         checked={checked}
                         onChange={onToggle}
-                        className="rounded border-gray-300"
+                        className="rounded border-input"
                     />
                 </td>
                 <td className="px-3 py-2 sticky left-8 bg-inherit z-10">
                     <button type="button" onClick={onExpand} className="text-left">
-                        <div className="font-medium text-gray-900">
+                        <div className="font-medium text-foreground">
                             {company.stock_code}
                             <span
                                 className={`ml-2 text-[10px] px-1.5 py-0.5 rounded border ${overall.className}`}
@@ -636,14 +636,14 @@ function CompanyCoverageRow({
                                 {overall.label}
                             </span>
                         </div>
-                        <div className="text-xs text-gray-500 truncate max-w-[160px]">
+                        <div className="text-xs text-muted-foreground truncate max-w-[160px]">
                             {company.stock_name}
                         </div>
                     </button>
                 </td>
-                <td className="px-3 py-2 text-right font-mono text-gray-700">
+                <td className="px-3 py-2 text-right font-mono text-foreground">
                     {formatPct(company.coverage_rate)}
-                    <div className="text-[10px] text-gray-400">
+                    <div className="text-[10px] text-muted-foreground">
                         {company.complete_cells}/{company.expected_cells}
                     </div>
                 </td>
@@ -681,35 +681,35 @@ function CompanyCoverageRow({
                     <button
                         type="button"
                         onClick={onView}
-                        className="text-xs text-blue-600 hover:underline mr-2"
+                        className="text-xs text-primary hover:underline mr-2"
                     >
                         查看
                     </button>
                     <button
                         type="button"
                         onClick={onRepair}
-                        className="text-xs text-indigo-600 hover:underline"
+                        className="text-xs text-primary hover:underline"
                     >
                         补采
                     </button>
                 </td>
             </tr>
             {expanded && (
-                <tr className="bg-slate-50/80">
+                <tr className="bg-muted/80">
                     <td colSpan={4 + years.length * reportTypes.length} className="px-4 py-3">
-                        <div className="text-xs text-gray-600 space-y-1">
+                        <div className="text-xs text-muted-foreground space-y-1">
                             {(company.cells || [])
                                 .filter((c) => c.status !== 'complete')
                                 .map((c) => (
                                     <div key={cellKey(c.year, String(c.report_type))}>
-                                        <span className="font-medium text-gray-800">
+                                        <span className="font-medium text-foreground">
                                             {c.year} {REPORT_LABEL[String(c.report_type)] || c.report_type}
                                         </span>
-                                        <span className="ml-2 text-gray-500">
+                                        <span className="ml-2 text-muted-foreground">
                                             核心 {c.core_present}/{c.core_total} · {STATUS_STYLE[c.status].label}
                                         </span>
                                         {c.missing_required?.length > 0 && (
-                                            <span className="ml-2 text-red-600">
+                                            <span className="ml-2 text-destructive">
                                                 缺必填：
                                                 {c.missing_required.map((m) => m.name).join('、')}
                                             </span>
@@ -717,7 +717,7 @@ function CompanyCoverageRow({
                                     </div>
                                 ))}
                             {(company.cells || []).every((c) => c.status === 'complete') && (
-                                <div className="text-green-700">该矩阵范围内核心科目齐全</div>
+                                <div className="text-success">该矩阵范围内核心科目齐全</div>
                             )}
                         </div>
                     </td>

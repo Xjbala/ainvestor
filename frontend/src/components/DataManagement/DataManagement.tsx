@@ -35,24 +35,24 @@ export const DataManagement: React.FC = () => {
             {/* Header */}
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
-                    <Database className="w-8 h-8 text-blue-600" />
-                    <h1 className="text-2xl font-bold text-gray-900">数据采集</h1>
+                    <Database className="w-8 h-8 text-primary" />
+                    <h1 className="text-2xl font-bold text-foreground">数据采集</h1>
                 </div>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                     爬虫任务管理 — 创建采集任务、监控执行进度、查看执行日志
                 </p>
             </div>
 
             {/* Task Sub-Tab Navigation */}
-            <div className="flex gap-2 mb-4 bg-gray-50 p-1 rounded-lg w-fit">
+            <div className="flex gap-2 mb-4 bg-muted p-1 rounded-vibe-sm w-fit">
                 {(['stock', 'financial', 'batch', 'qualitative'] as TaskSubTabType[]).map((sub) => (
                     <button
                         key={sub}
                         onClick={() => setTaskSubTab(sub)}
                         className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
                             taskSubTab === sub
-                                ? 'bg-white text-blue-600 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-card text-primary shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         {sub === 'stock' ? '股票数据' :
@@ -64,13 +64,13 @@ export const DataManagement: React.FC = () => {
 
             {/* Qualitative Sub-Tab */}
             {taskSubTab === 'qualitative' && (
-                <div className="flex gap-2 mb-4 bg-gray-50 p-1 rounded-lg w-fit ml-2">
+                <div className="flex gap-2 mb-4 bg-muted p-1 rounded-vibe-sm w-fit ml-2">
                     <button
                         onClick={() => setQualitativeSubTab('qualitative')}
                         className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
                             qualitativeSubTab === 'qualitative'
-                                ? 'bg-purple-600 text-white shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         年报PDF
@@ -79,8 +79,8 @@ export const DataManagement: React.FC = () => {
                         onClick={() => setQualitativeSubTab('news')}
                         className={`px-5 py-1.5 rounded-md text-sm font-medium transition-all ${
                             qualitativeSubTab === 'news'
-                                ? 'bg-green-600 text-white shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
+                                ? 'bg-success text-success-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
                         }`}
                     >
                         新闻舆情
@@ -91,12 +91,12 @@ export const DataManagement: React.FC = () => {
             {/* Action Bar */}
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
+                    <h2 className="text-lg font-semibold text-foreground">
                         {taskSubTab === 'stock' ? '股票数据同步' :
                          taskSubTab === 'batch' ? '全量批量采集' :
                          taskSubTab === 'qualitative' ? qualitativeInfo.title : '财务报表同步'}
                     </h2>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                         {taskSubTab === 'stock'
                             ? '同步交易所股票列表和价格数据'
                             : taskSubTab === 'batch'
@@ -110,7 +110,7 @@ export const DataManagement: React.FC = () => {
                     {taskSubTab === 'batch' && (
                         <button
                             onClick={() => setIsDialogOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors font-medium shadow-sm"
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary to-brand-700 text-primary-foreground rounded-vibe-sm hover:from-brand-700 hover:to-brand-800 transition-colors font-medium shadow-sm"
                         >
                             <Sparkles className="w-4 h-4" />
                             一键全量采集
@@ -119,10 +119,10 @@ export const DataManagement: React.FC = () => {
                     {taskSubTab === 'qualitative' && (
                         <button
                             onClick={() => setIsDialogOpen(true)}
-                            className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg hover:opacity-90 transition-colors font-medium shadow-sm ${
+                            className={`flex items-center gap-2 px-4 py-2 text-primary-foreground rounded-vibe-sm hover:opacity-90 transition-colors font-medium shadow-sm ${
                                 qualitativeSubTab === 'qualitative'
-                                    ? 'bg-gradient-to-r from-purple-600 to-pink-600'
-                                    : 'bg-gradient-to-r from-green-600 to-emerald-600'
+                                    ? 'bg-gradient-to-r from-brand-600 to-brand-800'
+                                    : 'bg-gradient-to-r from-success to-chart-3'
                             }`}
                         >
                             <Sparkles className="w-4 h-4" />
@@ -131,7 +131,7 @@ export const DataManagement: React.FC = () => {
                     )}
                     <button
                         onClick={() => setIsDialogOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-vibe-sm hover:bg-brand-700 transition-colors font-medium"
                     >
                         <Plus className="w-5 h-5" />
                         创建任务

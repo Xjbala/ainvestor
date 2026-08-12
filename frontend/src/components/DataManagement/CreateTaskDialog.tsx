@@ -322,16 +322,16 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
     const yearOptions = Array.from({ length: 20 }, (_, i) => currentYear - i - 1);
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[rgba(59,53,43,0.5)] flex items-center justify-center z-50 p-4">
+            <div className="bg-card rounded-vibe shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white z-10 rounded-t-2xl">
-                    <h2 className="text-xl font-bold text-gray-900">创建数据同步任务</h2>
+                <div className="flex items-center justify-between p-6 border-b border-border sticky top-0 bg-card z-10 rounded-t-vibe">
+                    <h2 className="text-xl font-bold text-foreground">创建数据同步任务</h2>
                     <button
                         onClick={handleClose}
-                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 hover:bg-muted rounded-vibe-sm transition-colors"
                     >
-                        <X className="w-5 h-5 text-gray-500" />
+                        <X className="w-5 h-5 text-muted-foreground" />
                     </button>
                 </div>
 
@@ -339,44 +339,44 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* Task Name */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            任务名称 <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            任务名称 <span className="text-destructive">*</span>
                         </label>
                         <input
                             type="text"
                             value={taskName}
                             onChange={(e) => setTaskName(e.target.value)}
                             placeholder={getTaskPlaceholder(dataType)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         />
                     </div>
 
                     {/* Data Type */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            数据类型 <span className="text-red-500">*</span>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                            数据类型 <span className="text-destructive">*</span>
                         </label>
                         <select
                             value={dataType}
                             onChange={(e) => setDataType(e.target.value as DataType)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         >
                             {Object.entries(DATA_TYPE_LABELS).map(([value, label]) => (
                                 <option key={value} value={value}>{label}</option>
                             ))}
                         </select>
                         {dataType === 'batch_financial_data' && (
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 自动采集所有A股上市公司的三大报表，支持断点续采和并发控制
                             </p>
                         )}
                         {dataType === 'qualitative_report' && (
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 从巨潮资讯网下载PDF年报/季报，通过AI解析提取管理层讨论与风险分析
                             </p>
                         )}
                         {dataType === 'news_sentiment' && (
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 采集上市公司相关新闻，进行简单情绪分析（正面/负面/中性）
                             </p>
                         )}
@@ -385,18 +385,18 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {/* Data Source */}
                     {hasMultipleSources && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-foreground mb-2">
                                 <Database className="w-4 h-4 inline mr-1" />
-                                数据源 <span className="text-red-500">*</span>
+                                数据源 <span className="text-destructive">*</span>
                             </label>
                             <div className="space-y-2">
                                 {(availableSources as typeof DATA_SOURCES).map((source) => (
                                     <label
                                         key={source.code}
-                                        className={`flex items-start p-3 border rounded-lg cursor-pointer transition-all ${
+                                        className={`flex items-start p-3 border rounded-vibe-sm cursor-pointer transition-all ${
                                             dataSourceCode === source.code
-                                                ? 'border-blue-500 bg-blue-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                                ? 'border-primary bg-brand-50'
+                                                : 'border-border hover:border-input'
                                         }`}
                                     >
                                         <input
@@ -408,8 +408,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                             className="mt-1 mr-3"
                                         />
                                         <div>
-                                            <div className="font-medium text-gray-900">{source.name}</div>
-                                            <div className="text-sm text-gray-500">{source.description}</div>
+                                            <div className="font-medium text-foreground">{source.name}</div>
+                                            <div className="text-sm text-muted-foreground">{source.description}</div>
                                         </div>
                                     </label>
                                 ))}
@@ -419,12 +419,12 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
 
                     {/* Single Data Source Info */}
                     {!hasMultipleSources && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <div className="bg-muted border border-border rounded-vibe-sm p-3">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Database className="w-4 h-4" />
                                 <span>数据源：</span>
                                 <span className="font-medium">{availableSources[0].name}</span>
-                                <span className="text-gray-400">- {availableSources[0].description}</span>
+                                <span className="text-muted-foreground">- {availableSources[0].description}</span>
                             </div>
                         </div>
                     )}
@@ -432,8 +432,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {/* Company Selection (for financial data, qualitative, news) */}
                     {showCompanyInput && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                目标公司 <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                目标公司 <span className="text-destructive">*</span>
                             </label>
 
                             {/* Selection mode toggle */}
@@ -441,10 +441,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                 <button
                                     type="button"
                                     onClick={() => setCompanySelectionMode('dropdown')}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-vibe-sm border transition-colors ${
                                         companySelectionMode === 'dropdown'
-                                            ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            ? 'bg-brand-50 border-primary text-brand-700'
+                                            : 'border-border text-muted-foreground hover:bg-muted'
                                     }`}
                                 >
                                     <Building2 className="w-4 h-4" />
@@ -453,10 +453,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                 <button
                                     type="button"
                                     onClick={() => setCompanySelectionMode('manual')}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+                                    className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-vibe-sm border transition-colors ${
                                         companySelectionMode === 'manual'
-                                            ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                            ? 'bg-brand-50 border-primary text-brand-700'
+                                            : 'border-border text-muted-foreground hover:bg-muted'
                                     }`}
                                 >
                                     <Users className="w-4 h-4" />
@@ -472,13 +472,13 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         value={companySearch}
                                         onChange={(e) => setCompanySearch(e.target.value)}
                                         placeholder="搜索股票代码或名称，如 600519 / 茅台"
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                                     />
                                     <div className="flex gap-2">
                                         <select
                                             value={selectedCompany}
                                             onChange={(e) => setSelectedCompany(e.target.value)}
-                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            className="flex-1 px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                                             disabled={isLoadingCompanies}
                                         >
                                             <option value="">
@@ -498,7 +498,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                             type="button"
                                             onClick={handleDropdownAddCompany}
                                             disabled={!selectedCompany}
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                            className="px-4 py-2 bg-primary text-primary-foreground rounded-vibe-sm hover:bg-brand-700 transition-colors flex items-center gap-2 disabled:bg-muted-foreground disabled:cursor-not-allowed"
                                         >
                                             <Plus className="w-4 h-4" />
                                             添加
@@ -519,15 +519,15 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         }}
                                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCompany())}
                                         placeholder="输入6位股票代码，如 600519"
-                                        className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                                            error ? 'border-red-300' : 'border-gray-300'
+                                        className={`flex-1 px-4 py-2 border rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent ${
+                                            error ? 'border-[rgba(239,68,68,0.3)]' : 'border-input'
                                         }`}
                                         maxLength={6}
                                     />
                                     <button
                                         type="button"
                                         onClick={handleAddCompany}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                        className="px-4 py-2 bg-primary text-primary-foreground rounded-vibe-sm hover:bg-brand-700 transition-colors flex items-center gap-2"
                                     >
                                         <Plus className="w-4 h-4" />
                                         添加
@@ -536,7 +536,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                             )}
 
                             {error && (
-                                <p className="text-sm text-red-500 mb-2">{error}</p>
+                                <p className="text-sm text-destructive mb-2">{error}</p>
                             )}
 
                             {companies.length > 0 && (
@@ -546,13 +546,13 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         return (
                                             <div
                                                 key={code}
-                                                className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                                                className="inline-flex items-center gap-1 px-3 py-1 bg-brand-50 text-brand-700 rounded-full text-sm"
                                             >
                                                 {code} {name}
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveCompany(code)}
-                                                    className="hover:text-blue-900"
+                                                    className="hover:text-brand-900"
                                                 >
                                                     <Trash2 className="w-3 h-3" />
                                                 </button>
@@ -567,8 +567,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {/* Batch Financial: Year Selection */}
                     {dataType === 'batch_financial_data' && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                采集年份 <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                采集年份 <span className="text-destructive">*</span>
                             </label>
                             {/* Presets */}
                             <div className="flex gap-2 mb-3">
@@ -577,10 +577,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         key={preset.label}
                                         type="button"
                                         onClick={() => applyYearPreset(preset.years)}
-                                        className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                                        className={`px-3 py-1.5 text-xs font-medium rounded-vibe-sm border transition-colors ${
                                             JSON.stringify(selectedYears.sort()) === JSON.stringify(preset.years.sort())
-                                                ? 'bg-blue-50 border-blue-500 text-blue-700'
-                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                ? 'bg-brand-50 border-primary text-brand-700'
+                                                : 'border-border text-muted-foreground hover:bg-muted'
                                         }`}
                                     >
                                         {preset.label}
@@ -588,7 +588,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                 ))}
                             </div>
                             {/* Year toggles */}
-                            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-muted rounded-vibe-sm">
                                 {yearOptions.map((year) => (
                                     <button
                                         key={year}
@@ -596,15 +596,15 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         onClick={() => toggleYear(year)}
                                         className={`px-3 py-1.5 text-sm rounded-md border transition-colors font-mono ${
                                             selectedYears.includes(year)
-                                                ? 'bg-blue-600 text-white border-blue-600'
-                                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                ? 'bg-primary text-primary-foreground border-primary'
+                                                : 'bg-card text-foreground border-border hover:border-input'
                                         }`}
                                     >
                                         {year}
                                     </button>
                                 ))}
                             </div>
-                            <p className="mt-1 text-xs text-gray-500">
+                            <p className="mt-1 text-xs text-muted-foreground">
                                 已选 {selectedYears.length} 年 · 点击年份切换选中状态
                             </p>
                         </div>
@@ -614,8 +614,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {showReportTypeSelection && (
                         <>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    报告类型 <span className="text-red-500">*</span>
+                                <label className="block text-sm font-medium text-foreground mb-2">
+                                    报告类型 <span className="text-destructive">*</span>
                                 </label>
                                 <div className="flex flex-wrap gap-2">
                                     {REPORT_TYPE_OPTIONS.map((opt) => (
@@ -623,10 +623,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                             key={opt.value}
                                             type="button"
                                             onClick={() => toggleReportType(opt.value)}
-                                            className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+                                            className={`px-4 py-2 text-sm rounded-vibe-sm border transition-colors ${
                                                 selectedReportTypes.includes(opt.value)
-                                                    ? 'bg-purple-600 text-white border-purple-600'
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'border-border text-muted-foreground hover:bg-muted'
                                             }`}
                                         >
                                             {opt.label}
@@ -635,7 +635,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground mb-2">
                                     采集年份（可选，不选则采集所有年份）
                                 </label>
                                 <div className="flex gap-2 mb-3">
@@ -644,17 +644,17 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                             key={preset.label}
                                             type="button"
                                             onClick={() => applyYearPreset(preset.years)}
-                                            className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                                            className={`px-3 py-1.5 text-xs font-medium rounded-vibe-sm border transition-colors ${
                                                 JSON.stringify(selectedYears.sort()) === JSON.stringify(preset.years.sort())
-                                                    ? 'bg-purple-50 border-purple-500 text-purple-700'
-                                                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                    ? 'bg-brand-50 border-brand-500 text-brand-700'
+                                                    : 'border-border text-muted-foreground hover:bg-muted'
                                             }`}
                                         >
                                             {preset.label}
                                         </button>
                                     ))}
                                 </div>
-                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                                <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 bg-muted rounded-vibe-sm">
                                     {yearOptions.map((year) => (
                                         <button
                                             key={year}
@@ -662,15 +662,15 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                             onClick={() => toggleYear(year)}
                                             className={`px-3 py-1.5 text-sm rounded-md border transition-colors font-mono ${
                                                 selectedYears.includes(year)
-                                                    ? 'bg-purple-600 text-white border-purple-600'
-                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : 'bg-card text-foreground border-border hover:border-input'
                                             }`}
                                         >
                                             {year}
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500">
+                                <p className="mt-1 text-xs text-muted-foreground">
                                     已选 {selectedYears.length} 年 · 留空表示采集所有可用年份
                                 </p>
                             </div>
@@ -680,8 +680,8 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {/* News: Days selector */}
                     {showNewsDays && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                最近天数 <span className="text-red-500">*</span>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                最近天数 <span className="text-destructive">*</span>
                             </label>
                             <div className="flex gap-2">
                                 {[30, 90, 180, 365].map((days) => (
@@ -689,10 +689,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                         key={days}
                                         type="button"
                                         onClick={() => setNewsDays(days)}
-                                        className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+                                        className={`px-4 py-2 text-sm rounded-vibe-sm border transition-colors ${
                                             newsDays === days
-                                                ? 'bg-green-600 text-white border-green-600'
-                                                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                                ? 'bg-success text-success-foreground border-success'
+                                                : 'border-border text-muted-foreground hover:bg-muted'
                                         }`}
                                     >
                                         最近{days}天
@@ -702,7 +702,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                                     type="number"
                                     value={newsDays}
                                     onChange={(e) => setNewsDays(Math.max(1, parseInt(e.target.value) || 1))}
-                                    className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-center"
+                                    className="w-20 px-3 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-success focus:border-transparent text-center"
                                     min={1}
                                     max={3650}
                                 />
@@ -714,25 +714,25 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                     {showDateRange && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground mb-2">
                                     开始日期
                                 </label>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-foreground mb-2">
                                     结束日期
                                 </label>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full px-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                                 />
                             </div>
                         </div>
@@ -740,7 +740,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
 
                     {/* Error Message */}
                     {error && (
-                        <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                        <div className="p-3 bg-[rgba(239,68,68,0.06)] text-destructive rounded-vibe-sm text-sm">
                             {error}
                         </div>
                     )}
@@ -750,18 +750,18 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({ isOpen, onCl
                         <button
                             type="button"
                             onClick={handleClose}
-                            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                            className="flex-1 px-4 py-2 border border-input text-foreground rounded-vibe-sm hover:bg-muted transition-colors"
                         >
                             取消
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-vibe-sm hover:bg-brand-700 transition-colors disabled:bg-muted-foreground disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                             {isSubmitting ? (
                                 <>
-                                    <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                                    <span className="animate-spin inline-block w-4 h-4 border-2 border-card border-t-transparent rounded-full"></span>
                                     创建中...
                                 </>
                             ) : dataType === 'batch_financial_data' ? (

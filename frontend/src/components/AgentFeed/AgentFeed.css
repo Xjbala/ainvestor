@@ -2,20 +2,20 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--color-base-900);
-    border-left: 1px solid var(--color-border);
+    background: var(--card);
+    border-left: 1px solid var(--border);
     position: relative;
 }
 
 /* Header V2 - Modernist Grid */
 .feed-header-v2 {
     padding: var(--space-xl) var(--space-xl) var(--space-md);
-    border-bottom: 2px solid var(--color-base-white);
-    /* Vignelli bold line */
+    border-bottom: 2px solid var(--foreground);
+    /* Golden Time 浅色主题 */
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    background: var(--color-base-900);
+    background: var(--card);
     z-index: 10;
 }
 
@@ -25,7 +25,7 @@
     margin: 0;
     line-height: 0.9;
     letter-spacing: -0.05em;
-    color: var(--color-base-white);
+    color: var(--foreground);
 }
 
 .feed-status-v2 {
@@ -34,13 +34,13 @@
     gap: var(--space-sm);
     margin-top: var(--space-xs);
     font-size: 0.75rem;
-    color: var(--color-accent-secondary);
+    color: var(--secondary);
 }
 
 .pulse-dot {
     width: 6px;
     height: 6px;
-    background: var(--color-accent-secondary);
+    background: var(--secondary);
     border-radius: 50%;
     animation: pulse-flux 2s ease-in-out infinite;
 }
@@ -56,13 +56,13 @@
     50% {
         opacity: 1;
         transform: scale(1.5);
-        box-shadow: 0 0 10px var(--color-accent-secondary);
+        box-shadow: 0 0 10px var(--secondary);
     }
 }
 
 .feed-meta {
     font-size: 0.75rem;
-    color: var(--color-text-muted);
+    color: var(--muted-foreground);
 }
 
 /* Scroller & List */
@@ -90,7 +90,7 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-md);
-    color: var(--color-text-muted);
+    color: var(--muted-foreground);
     opacity: 0.5;
 }
 
@@ -126,12 +126,12 @@
     left: 0;
     width: 4px;
     height: 100%;
-    background: var(--color-accent-secondary);
+    background: var(--secondary);
     opacity: 0.3;
 }
 
 .feed-card-v2.phase-conference::after {
-    background: var(--color-accent-primary);
+    background: var(--primary);
 }
 
 /* Agent Identity */
@@ -144,12 +144,12 @@
 .agent-avatar {
     width: 40px;
     height: 40px;
-    background: var(--color-base-700);
-    border-radius: 8px;
+    background: var(--secondary);
+    border-radius: calc(var(--radius) - 8px);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-base-white);
+    color: var(--foreground);
 }
 
 .agent-avatar i {
@@ -165,7 +165,7 @@
 .agent-name-v2 {
     font-size: 0.9rem;
     font-weight: 700;
-    color: var(--color-base-white);
+    color: var(--foreground);
     letter-spacing: 0.05em;
 }
 
@@ -178,13 +178,13 @@
 
 .timestamp-v2 {
     font-size: 0.7rem;
-    color: var(--color-text-muted);
+    color: var(--muted-foreground);
 }
 
 /* Message Content */
 .message-body {
     font-size: 0.9375rem;
-    color: var(--color-text);
+    color: var(--foreground);
     line-height: 1.8;
 }
 
@@ -214,7 +214,7 @@
 }
 
 .markdown-content strong {
-    color: var(--color-accent-primary);
+    color: var(--primary);
     /* Insight emphasis */
 }
 

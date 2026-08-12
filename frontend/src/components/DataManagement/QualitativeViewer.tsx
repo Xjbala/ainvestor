@@ -28,12 +28,12 @@ function SectionCard({
 }) {
     if (!content) return null;
     return (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h4 className="font-semibold text-gray-800 mb-2">
+        <div className="bg-card rounded-vibe-sm border border-border p-4">
+            <h4 className="font-semibold text-foreground mb-2">
                 {icon && <span className="mr-1">{icon}</span>}
                 {title}
             </h4>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{content}</p>
+            <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{content}</p>
         </div>
     );
 }
@@ -93,23 +93,23 @@ export const QualitativeViewer: React.FC = () => {
 
             {/* 加载/错误/空状态 */}
             {isLoading && (
-                <div className="flex items-center justify-center py-20 text-gray-500">
+                <div className="flex items-center justify-center py-20 text-muted-foreground">
                     <Loader2 className="w-6 h-6 animate-spin mr-2" /> 加载中...
                 </div>
             )}
             {error && (
-                <div className="flex items-center gap-2 py-10 text-red-600">
+                <div className="flex items-center gap-2 py-10 text-destructive">
                     <AlertCircle className="w-5 h-5" /> {error}
                 </div>
             )}
             {!isLoading && !error && !stockCode && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                     <FileText className="w-12 h-12 mb-3" />
                     <p>请先选择一家公司查看年报内容</p>
                 </div>
             )}
             {!isLoading && !error && stockCode && reports.length === 0 && (
-                <div className="text-center py-10 text-gray-500">暂无定性报告数据</div>
+                <div className="text-center py-10 text-muted-foreground">暂无定性报告数据</div>
             )}
 
             {/* 报告列表 + 详情 */}
@@ -117,7 +117,7 @@ export const QualitativeViewer: React.FC = () => {
                 <div className="flex gap-6">
                     {/* 左侧：报告列表 */}
                     <div className="w-64 shrink-0">
-                        <h3 className="text-sm font-semibold text-gray-600 mb-3">报告列表</h3>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-3">报告列表</h3>
                         <div className="space-y-2">
                             {reports.map((r) => (
                                 <button
@@ -127,20 +127,20 @@ export const QualitativeViewer: React.FC = () => {
                                         setShowMarkdown(false);
                                         setMarkdownContent(null);
                                     }}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg border transition-all ${
+                                    className={`w-full text-left px-3 py-2.5 rounded-vibe-sm border transition-all ${
                                         selectedId === r.id
-                                            ? 'border-blue-300 bg-blue-50'
-                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                            ? 'border-brand-300 bg-brand-50'
+                                            : 'border-border hover:border-input hover:bg-muted'
                                     }`}
                                 >
-                                    <div className="text-sm font-medium text-gray-800">
+                                    <div className="text-sm font-medium text-foreground">
                                         {REPORT_TYPE_LABELS[r.report_type] || r.report_type}
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-0.5">
+                                    <div className="text-xs text-muted-foreground mt-0.5">
                                         {r.report_period}
                                     </div>
                                     {r.publish_date && (
-                                        <div className="text-xs text-gray-400 mt-0.5">
+                                        <div className="text-xs text-muted-foreground mt-0.5">
                                             披露: {r.publish_date}
                                         </div>
                                     )}
@@ -155,9 +155,9 @@ export const QualitativeViewer: React.FC = () => {
                             <div className="space-y-4">
                                 {/* 标题栏 */}
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-bold text-gray-900">
+                                    <h3 className="text-lg font-bold text-foreground">
                                         {REPORT_TYPE_LABELS[selectedReport.report_type] || selectedReport.report_type}
-                                        <span className="ml-2 text-gray-500 font-normal text-base">
+                                        <span className="ml-2 text-muted-foreground font-normal text-base">
                                             {selectedReport.report_period}
                                         </span>
                                     </h3>
@@ -166,7 +166,7 @@ export const QualitativeViewer: React.FC = () => {
                                             href={selectedReport.source_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800"
+                                            className="flex items-center gap-1 text-sm text-primary hover:text-brand-800"
                                         >
                                             <ExternalLink className="w-4 h-4" /> 原始PDF
                                         </a>
@@ -187,8 +187,8 @@ export const QualitativeViewer: React.FC = () => {
                                 {selectedReport.risk_keywords &&
                                     typeof selectedReport.risk_keywords === 'object' &&
                                     Object.keys(selectedReport.risk_keywords).length > 0 && (
-                                        <div className="bg-white rounded-lg border border-gray-200 p-4">
-                                            <h4 className="font-semibold text-gray-800 mb-2">⚠️ 风险关键词</h4>
+                                        <div className="bg-card rounded-vibe-sm border border-border p-4">
+                                            <h4 className="font-semibold text-foreground mb-2">⚠️ 风险关键词</h4>
                                             <div className="flex flex-wrap gap-2">
                                                 {(Array.isArray(selectedReport.risk_keywords)
                                                     ? selectedReport.risk_keywords
@@ -196,7 +196,7 @@ export const QualitativeViewer: React.FC = () => {
                                                 ).map((kw, i) => (
                                                     <span
                                                         key={i}
-                                                        className="px-2 py-1 bg-red-50 text-red-700 rounded-md text-xs"
+                                                        className="px-2 py-1 bg-[rgba(239,68,68,0.06)] text-destructive rounded-md text-xs"
                                                     >
                                                         {typeof kw === 'string' ? kw : String(kw)}
                                                     </span>
@@ -207,14 +207,14 @@ export const QualitativeViewer: React.FC = () => {
 
                                 {/* Markdown 全文折叠 */}
                                 {selectedReport.raw_markdown_length != null && (
-                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="border border-border rounded-vibe-sm overflow-hidden">
                                         <button
                                             onClick={loadMarkdown}
-                                            className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
+                                            className="w-full flex items-center justify-between px-4 py-3 bg-muted hover:bg-muted text-sm text-foreground"
                                         >
                                             <span className="font-medium">
                                                 原始Markdown全文
-                                                <span className="ml-2 text-xs text-gray-400">
+                                                <span className="ml-2 text-xs text-muted-foreground">
                                                     ({selectedReport.raw_markdown_length.toLocaleString()} 字符)
                                                 </span>
                                             </span>
@@ -225,7 +225,7 @@ export const QualitativeViewer: React.FC = () => {
                                             )}
                                         </button>
                                         {showMarkdown && (
-                                            <pre className="px-4 py-3 text-[11px] leading-relaxed text-slate-100 bg-slate-950 whitespace-pre-wrap break-words max-h-96 overflow-auto">
+                                            <pre className="px-4 py-3 text-[11px] leading-relaxed text-[#f2ede7] bg-[#1e1a16] whitespace-pre-wrap break-words max-h-96 overflow-auto">
                                                 {markdownContent || '加载中...'}
                                             </pre>
                                         )}
@@ -233,12 +233,12 @@ export const QualitativeViewer: React.FC = () => {
                                 )}
 
                                 {/* 元信息 */}
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-muted-foreground">
                                     提取方法: {selectedReport.extraction_method || '-'}
                                 </p>
                             </div>
                         ) : (
-                            <div className="text-center py-10 text-gray-400">
+                            <div className="text-center py-10 text-muted-foreground">
                                 请从左侧选择一份报告查看详情
                             </div>
                         )}

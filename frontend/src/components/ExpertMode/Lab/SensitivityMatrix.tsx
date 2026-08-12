@@ -29,7 +29,7 @@ export function SensitivityMatrix({ baseWacc, baseG, basePrice, sensitivity }: S
             <div className="matrix-container">
                 <div className="panel-title" style={{ marginBottom: '16px' }}>
                     敏感性分析矩阵 (WACC × g)
-                    <span style={{ fontSize: 11, color: '#6b7280', marginLeft: 8 }}>后端计算</span>
+                    <span style={{ fontSize: 11, color: 'var(--muted-foreground)', marginLeft: 8 }}>后端计算</span>
                 </div>
                 <div style={{ overflowX: 'auto' }}>
                     <table className="matrix-table">

@@ -7,14 +7,14 @@ interface TriangulateTabPanelProps {
 
 export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps) {
     if (loading && !data) {
-        return <div className="text-center py-12 text-gray-500">正在综合多方法估值...</div>;
+        return <div className="text-center py-12 text-muted-foreground">正在综合多方法估值...</div>;
     }
     if (!data) {
-        return <div className="text-center py-12 text-gray-500">暂无综合估值数据</div>;
+        return <div className="text-center py-12 text-muted-foreground">暂无综合估值数据</div>;
     }
     if (data.error && !data.blended_price) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 <p className="text-lg mb-2">综合估值失败</p>
                 <p className="text-sm">{data.error}</p>
             </div>
@@ -31,9 +31,9 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
     return (
         <>
             {/* Headline */}
-            <div className="mb-4 p-4 bg-gradient-to-r from-slate-50 to-blue-50 border border-blue-100 rounded-lg">
-                <div className="text-sm text-gray-500 mb-1">综合结论</div>
-                <div className="text-base text-gray-900 leading-relaxed">{data.headline || '—'}</div>
+            <div className="mb-4 p-4 bg-gradient-to-r from-muted to-brand-50 border border-brand-200 rounded-vibe-sm">
+                <div className="text-sm text-muted-foreground mb-1">综合结论</div>
+                <div className="text-base text-foreground leading-relaxed">{data.headline || '—'}</div>
                 <div className="mt-3 flex flex-wrap gap-4 text-sm">
                     <span>
                         综合公允价:{' '}
@@ -51,7 +51,7 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                         空间:{' '}
                         <strong
                             className={
-                                (data.upside_pct ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                                (data.upside_pct ?? 0) >= 0 ? 'text-success' : 'text-destructive'
                             }
                         >
                             {data.upside_pct != null
@@ -75,8 +75,8 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
             </div>
 
             {/* Methods table */}
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">方法对比</h3>
+            <div className="mt-4 bg-card rounded-vibe-sm border border-border p-4">
+                <h3 className="text-lg font-semibold text-foreground mb-3">方法对比</h3>
                 <div className="overflow-x-auto">
                     <table className="forecast-table">
                         <thead>
@@ -110,7 +110,7 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                                             ? `${m.upside_downside > 0 ? '+' : ''}${m.upside_downside}%`
                                             : '—'}
                                     </td>
-                                    <td className="text-xs text-gray-500">
+                                    <td className="text-xs text-muted-foreground">
                                         {m.skip_reason || m.investment_rating || '—'}
                                     </td>
                                 </tr>
@@ -133,7 +133,7 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                                 <div className="result-price">
                                     ¥{Number(s.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}
                                 </div>
-                                <div className="text-xs text-gray-500 mt-2">
+                                <div className="text-xs text-muted-foreground mt-2">
                                     {s.levers
                                         ? Object.entries(s.levers)
                                               .map(([k, v]) => `${k}: ${v}`)
@@ -148,29 +148,29 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
 
             {/* WACC breakdown */}
             {wacc && !wacc.error && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">WACC / CAPM 拆解</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                <h3 className="text-lg font-semibold text-foreground mb-3">WACC / CAPM 拆解</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div>
-                            <span className="text-gray-500">WACC</span>
+                            <span className="text-muted-foreground">WACC</span>
                             <div className="font-mono font-semibold">
                                 {wacc.wacc != null ? `${(Number(wacc.wacc) * 100).toFixed(2)}%` : '—'}
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">Ke (股权成本)</span>
+                            <span className="text-muted-foreground">Ke (股权成本)</span>
                             <div className="font-mono">
                                 {wacc.ke != null ? `${(Number(wacc.ke) * 100).toFixed(2)}%` : '—'}
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">Kd (债务成本)</span>
+                            <span className="text-muted-foreground">Kd (债务成本)</span>
                             <div className="font-mono">
                                 {wacc.kd != null ? `${(Number(wacc.kd) * 100).toFixed(2)}%` : '—'}
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">β / ERP / Rf</span>
+                            <span className="text-muted-foreground">β / ERP / Rf</span>
                             <div className="font-mono text-xs">
                                 {wacc.beta != null ? Number(wacc.beta).toFixed(2) : '—'} /{' '}
                                 {wacc.erp != null ? `${(Number(wacc.erp) * 100).toFixed(1)}%` : '—'} /{' '}
@@ -178,14 +178,14 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">权益/债务权重</span>
+                            <span className="text-muted-foreground">权益/债务权重</span>
                             <div className="font-mono text-xs">
                                 {wacc.e_weight != null ? `${(Number(wacc.e_weight) * 100).toFixed(0)}%` : '—'} /{' '}
                                 {wacc.d_weight != null ? `${(Number(wacc.d_weight) * 100).toFixed(0)}%` : '—'}
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">税率</span>
+                            <span className="text-muted-foreground">税率</span>
                             <div className="font-mono">
                                 {wacc.tax_rate != null
                                     ? `${(Number(wacc.tax_rate) * 100).toFixed(0)}%`
@@ -193,11 +193,11 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                             </div>
                         </div>
                         <div>
-                            <span className="text-gray-500">行业画像</span>
+                            <span className="text-muted-foreground">行业画像</span>
                             <div className="font-mono text-xs">{wacc.profile_key || 'default'}</div>
                         </div>
                         <div>
-                            <span className="text-gray-500">行业 band</span>
+                            <span className="text-muted-foreground">行业 band</span>
                             <div className="font-mono text-xs">
                                 {Array.isArray(wacc.sanity?.band) && wacc.sanity.band.length >= 2
                                     ? `${(Number(wacc.sanity.band[0]) * 100).toFixed(0)}%-${(
@@ -205,7 +205,7 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
                                       ).toFixed(0)}%`
                                     : '—'}
                                 {wacc.sanity?.in_sector_band === false && (
-                                    <span className="text-amber-600 ml-1">⚠</span>
+                                    <span className="text-warning-foreground ml-1">⚠</span>
                                 )}
                             </div>
                         </div>
@@ -215,9 +215,9 @@ export function TriangulateTabPanel({ data, loading }: TriangulateTabPanelProps)
 
             {/* Risks */}
             {risks.length > 0 && (
-                <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-lg">
-                    <h3 className="text-sm font-semibold text-amber-900 mb-2">风险与注意</h3>
-                    <ul className="list-disc list-inside text-sm text-amber-900 space-y-1">
+                <div className="mt-4 p-4 bg-warning/10 border border-warning/20 rounded-vibe-sm">
+                    <h3 className="text-sm font-semibold text-warning-foreground mb-2">风险与注意</h3>
+                    <ul className="list-disc list-inside text-sm text-warning-foreground space-y-1">
                         {risks.map((r: string, i: number) => (
                             <li key={i}>{r}</li>
                         ))}

@@ -18,6 +18,7 @@ from typing import List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from .db import async_session_factory, init_database, close_database as _close_db
 from .orm_models import (
@@ -154,6 +155,27 @@ class CompatDatabase:
                     mode=getattr(orm_session, 'mode', 'ai')
                 ))
             return sessions
+
+    async def delete_session(self, session_id: str) -> bool:
+        """删除已结束的分析会话及其输出和报告。"""
+        async with async_session_factory() as session:
+            result = await session.execute(
+                select(AnalysisSessionORM)
+                .where(AnalysisSessionORM.id == session_id)
+                .options(
+                    selectinload(AnalysisSessionORM.outputs),
+                    selectinload(AnalysisSessionORM.report),
+                )
+            )
+            orm_session = result.scalar_one_or_none()
+            if not orm_session:
+                return False
+            if orm_session.status in (SessionStatus.PENDING, SessionStatus.RUNNING):
+                raise ValueError("正在运行的分析会话不能删除")
+
+            await session.delete(orm_session)
+            await session.commit()
+            return True
 
     # ========== Agent Output 操作 ==========
 

@@ -33,12 +33,21 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectAttemptsRef = useRef(0);
     const reconnectTimeoutRef = useRef<number | null>(null);
+    const shouldReconnectRef = useRef(true);
+    const connectRef = useRef<() => void>(() => undefined);
+    const callbacksRef = useRef({ onMessage, onOpen, onClose, onError });
+
+    useEffect(() => {
+        callbacksRef.current = { onMessage, onOpen, onClose, onError };
+    }, [onMessage, onOpen, onClose, onError]);
 
     const connect = useCallback(() => {
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
+        const readyState = wsRef.current?.readyState;
+        if (readyState === WebSocket.OPEN || readyState === WebSocket.CONNECTING) {
             return;
         }
 
+        shouldReconnectRef.current = true;
         try {
             const ws = new WebSocket(url);
 
@@ -46,13 +55,13 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
                 console.log('WebSocket connected');
                 setIsConnected(true);
                 reconnectAttemptsRef.current = 0;
-                onOpen?.();
+                callbacksRef.current.onOpen?.();
             };
 
             ws.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data) as WebSocketMessage;
-                    onMessage?.(message);
+                    callbacksRef.current.onMessage?.(message);
                 } catch (e) {
                     console.error('Failed to parse WebSocket message:', e);
                 }
@@ -61,36 +70,47 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
             ws.onclose = () => {
                 console.log('WebSocket disconnected');
                 setIsConnected(false);
-                wsRef.current = null;
-                onClose?.();
+                if (wsRef.current === ws) {
+                    wsRef.current = null;
+                }
+                callbacksRef.current.onClose?.();
 
-                // 自动重连
-                if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+                if (
+                    shouldReconnectRef.current
+                    && reconnectAttemptsRef.current < maxReconnectAttempts
+                ) {
                     reconnectAttemptsRef.current += 1;
                     console.log(`Reconnecting... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
-                    reconnectTimeoutRef.current = window.setTimeout(connect, reconnectInterval);
+                    reconnectTimeoutRef.current = window.setTimeout(
+                        () => connectRef.current(),
+                        reconnectInterval,
+                    );
                 }
             };
 
             ws.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                onError?.(error);
+                callbacksRef.current.onError?.(error);
             };
 
             wsRef.current = ws;
         } catch (e) {
             console.error('Failed to create WebSocket:', e);
         }
-    }, [url, onMessage, onOpen, onClose, onError, reconnectInterval, maxReconnectAttempts]);
+    }, [url, reconnectInterval, maxReconnectAttempts]);
+
+    useEffect(() => {
+        connectRef.current = connect;
+    }, [connect]);
 
     const disconnect = useCallback(() => {
-        if (reconnectTimeoutRef.current) {
+        shouldReconnectRef.current = false;
+        if (reconnectTimeoutRef.current !== null) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
         }
-        reconnectAttemptsRef.current = maxReconnectAttempts; // 阻止自动重连
         wsRef.current?.close();
-    }, [maxReconnectAttempts]);
+    }, []);
 
     const send = useCallback((data: object) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -100,12 +120,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         }
     }, []);
 
-    // 组件卸载时断开连接
-    useEffect(() => {
-        return () => {
-            disconnect();
-        };
-    }, [disconnect]);
+    useEffect(() => disconnect, [disconnect]);
 
     return {
         isConnected,

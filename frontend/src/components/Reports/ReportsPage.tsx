@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Clock, Search, RefreshCw, ExternalLink, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FileText, Clock, Search, RefreshCw, ExternalLink, Eye, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { stripThinkingContent } from '../../utils/reportUtils';
@@ -30,6 +30,7 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [previewReport, setPreviewReport] = useState<ReportItem | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
     const [page, setPage] = useState(1);
     const pageSize = 20;
 
@@ -78,6 +79,31 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
         fetchReports();
     }, []);
 
+    const deleteReport = async (report: ReportItem) => {
+        if (report.status === 'running' || report.status === 'pending') return;
+        if (!window.confirm(`删除 ${report.tickers.join(', ')} 的这条分析记录？此操作不可恢复。`)) {
+            return;
+        }
+
+        setDeletingId(report.id);
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${API_URL}/api/sessions/${report.id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                throw new Error(`删除失败: ${response.status}`);
+            }
+            setReports((current) => current.filter((item) => item.id !== report.id));
+            if (previewReport?.id === report.id) setPreviewReport(null);
+        } catch (error) {
+            console.error('[ReportsPage] Failed to delete session:', error);
+            setError('删除分析记录失败，请重试');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     // 从报告内容中提取关键指标
     const extractRecommendation = (content: string): string => {
         if (!content) return '—';
@@ -119,12 +145,12 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
 
     const getStatusBadge = (status: string) => {
         const map: Record<string, { label: string; color: string; bg: string }> = {
-            completed: { label: '已完成', color: 'text-emerald-700', bg: 'bg-emerald-50' },
-            running: { label: '分析中', color: 'text-blue-700', bg: 'bg-blue-50' },
-            failed: { label: '失败', color: 'text-red-700', bg: 'bg-red-50' },
-            cancelled: { label: '已取消', color: 'text-gray-600', bg: 'bg-gray-50' },
+            completed: { label: '已完成', color: 'text-success', bg: 'bg-[rgba(19,177,90,0.06)]' },
+            running: { label: '分析中', color: 'text-brand-700', bg: 'bg-brand-50' },
+            failed: { label: '失败', color: 'text-destructive', bg: 'bg-[rgba(239,68,68,0.06)]' },
+            cancelled: { label: '已取消', color: 'text-muted-foreground', bg: 'bg-muted' },
         };
-        const s = map[status] || { label: status, color: 'text-gray-600', bg: 'bg-gray-50' };
+        const s = map[status] || { label: status, color: 'text-muted-foreground', bg: 'bg-muted' };
         return (
             <span className={`px-2 py-0.5 text-xs rounded font-medium ${s.bg} ${s.color}`}>
                 {s.label}
@@ -137,28 +163,28 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
             {/* Header */}
             <div className="mb-6">
                 <div className="flex items-center gap-3 mb-2">
-                    <FileText className="w-8 h-8 text-blue-600" />
-                    <h1 className="text-2xl font-bold text-gray-900">投资分析报告</h1>
+                    <FileText className="w-8 h-8 text-primary" />
+                    <h1 className="text-2xl font-bold text-foreground">投资分析报告</h1>
                 </div>
-                <p className="text-gray-600">查看和管理所有 AI 生成的投资决策报告</p>
+                <p className="text-muted-foreground">查看和管理所有 AI 生成的投资决策报告</p>
             </div>
 
             {/* Filters */}
             <div className="flex gap-3 mb-6 items-center">
                 <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <input
                         type="text"
                         placeholder="搜索股票代码或评级..."
                         value={searchTerm}
                         onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
-                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        className="w-full pl-9 pr-4 py-2 border border-input rounded-vibe-sm focus:ring-2 focus:ring-ring focus:border-transparent text-sm"
                     />
                 </div>
                 <select
                     value={statusFilter}
                     onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 border border-input rounded-vibe-sm text-sm focus:ring-2 focus:ring-ring"
                 >
                     <option value="all">全部状态</option>
                     <option value="completed">已完成</option>
@@ -167,7 +193,7 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
                 </select>
                 <button
                     onClick={fetchReports}
-                    className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-3 py-2 text-muted-foreground hover:bg-muted rounded-vibe-sm transition-colors"
                     title="刷新"
                 >
                     <RefreshCw className="w-4 h-4" />
@@ -177,48 +203,48 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
             {/* Content */}
             {loading ? (
                 <div className="flex items-center justify-center py-12">
-                    <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
+                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
                 </div>
             ) : error ? (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-700">{error}</div>
+                <div className="bg-[rgba(239,68,68,0.06)] border border-[rgba(239,68,68,0.2)] rounded-vibe p-6 text-center text-destructive">{error}</div>
             ) : paginatedReports.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                    <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <div className="text-center py-12 text-muted-foreground">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
                     <p>暂无分析报告</p>
                     <p className="text-sm mt-1">在 AI 分析模式下生成报告后将在此显示</p>
                 </div>
             ) : (
                 <>
-                    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                    <div className="bg-card rounded-vibe border border-border overflow-hidden">
                         <table className="w-full">
-                            <thead className="bg-gray-50 border-b border-gray-200">
+                            <thead className="bg-muted border-b border-border">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">股票代码</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">评级</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">目标价</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">模式</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">时间</th>
-                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">操作</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">股票代码</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">状态</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">评级</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">目标价</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">模式</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">时间</th>
+                                    <th className="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">操作</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-border">
                                 {paginatedReports.map((report) => (
-                                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-medium text-blue-600">
+                                    <tr key={report.id} className="hover:bg-muted transition-colors">
+                                        <td className="px-6 py-4 text-sm font-medium text-primary">
                                             {report.tickers.join(', ')}
                                         </td>
                                         <td className="px-6 py-4">{getStatusBadge(report.status)}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-foreground">
                                             {report.status === 'completed' ? extractRecommendation(report.report_content || '') : '—'}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-foreground">
                                             {report.status === 'completed' ? extractTargetPrice(report.report_content || '') : '—'}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-6 py-4 text-sm text-muted-foreground">
                                             {report.mode === 'expert' ? '专家模式' : 'AI分析'}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-6 py-4 text-sm text-muted-foreground">
                                             <Clock className="w-3 h-3 inline mr-1" />
                                             {formatTimeAgo(report.created_at)}
                                         </td>
@@ -226,10 +252,18 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
                                             <button
                                                 onClick={() => setPreviewReport(report)}
                                                 disabled={report.status !== 'completed' || !report.report_content}
-                                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                className="p-1.5 text-primary hover:bg-brand-50 rounded-vibe-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                                                 title="预览报告"
                                             >
                                                 <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => void deleteReport(report)}
+                                                disabled={report.status === 'running' || report.status === 'pending' || deletingId === report.id}
+                                                className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-vibe-sm transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                title={report.status === 'running' || report.status === 'pending' ? '运行中的分析不能删除' : '删除分析记录'}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </td>
                                     </tr>
@@ -241,21 +275,21 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
                     {/* Pagination */}
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between mt-4 px-2">
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                                 第 {page} 页，共 {totalPages} 页
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => setPage(p => Math.max(1, p - 1))}
                                     disabled={page === 1}
-                                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 text-sm"
+                                    className="px-3 py-1 border border-input rounded-vibe-sm hover:bg-muted disabled:opacity-50 text-sm"
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                     disabled={page === totalPages}
-                                    className="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50 text-sm"
+                                    className="px-3 py-1 border border-input rounded-vibe-sm hover:bg-muted disabled:opacity-50 text-sm"
                                 >
                                     <ChevronRight className="w-4 h-4" />
                                 </button>
@@ -267,26 +301,26 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
 
             {/* Preview Modal */}
             {previewReport && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewReport(null)}>
+                <div className="fixed inset-0 bg-[rgba(59,53,43,0.5)] flex items-center justify-center z-50 p-4" onClick={() => setPreviewReport(null)}>
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+                        className="bg-card rounded-vibe shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Modal Header */}
-                        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
+                        <div className="flex items-center justify-between p-6 border-b border-border bg-muted">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">
+                                <h2 className="text-xl font-bold text-foreground">
                                     投资分析报告 — {previewReport.tickers.join(', ')}
                                 </h2>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <p className="text-sm text-muted-foreground mt-1">
                                     {previewReport.mode === 'expert' ? '专家模式' : 'AI分析'} · {formatTimeAgo(previewReport.created_at)}
                                 </p>
                             </div>
                             <button
                                 onClick={() => setPreviewReport(null)}
-                                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                className="p-2 hover:bg-border rounded-vibe-sm transition-colors"
                             >
-                                <ExternalLink className="w-5 h-5 rotate-45 text-gray-500" />
+                                <ExternalLink className="w-5 h-5 rotate-45 text-muted-foreground" />
                             </button>
                         </div>
 
@@ -299,7 +333,7 @@ export const ReportsPage: React.FC<{ onSwitchMode?: (mode: 'dashboard' | 'ai' | 
                                     </ReactMarkdown>
                                 </div>
                             ) : (
-                                <div className="text-center py-12 text-gray-400">暂无报告内容</div>
+                                <div className="text-center py-12 text-muted-foreground">暂无报告内容</div>
                             )}
                         </div>
                     </div>

@@ -26,38 +26,38 @@ const DATA_TYPE_LABELS: Record<string, string> = {
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
     pending: {
         label: '等待中',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-100',
+        color: 'text-muted-foreground',
+        bgColor: 'bg-muted',
         icon: <Clock className="w-4 h-4" />,
     },
     running: {
         label: '执行中',
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-100',
+        color: 'text-primary',
+        bgColor: 'bg-brand-100',
         icon: <Loader2 className="w-4 h-4 animate-spin" />,
     },
     success: {
         label: '已完成',
-        color: 'text-green-600',
-        bgColor: 'bg-green-100',
+        color: 'text-success',
+        bgColor: 'bg-[rgba(19,177,90,0.12)]',
         icon: <CheckCircle2 className="w-4 h-4" />,
     },
     completed: {
         label: '已完成',
-        color: 'text-green-600',
-        bgColor: 'bg-green-100',
+        color: 'text-success',
+        bgColor: 'bg-[rgba(19,177,90,0.12)]',
         icon: <CheckCircle2 className="w-4 h-4" />,
     },
     failed: {
         label: '失败',
-        color: 'text-red-600',
-        bgColor: 'bg-red-100',
+        color: 'text-destructive',
+        bgColor: 'bg-[rgba(239,68,68,0.12)]',
         icon: <XCircle className="w-4 h-4" />,
     },
     cancelled: {
         label: '已取消',
-        color: 'text-gray-500',
-        bgColor: 'bg-gray-100',
+        color: 'text-muted-foreground',
+        bgColor: 'bg-muted',
         icon: <XCircle className="w-4 h-4" />,
     },
 };
@@ -89,21 +89,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
     };
 
     return (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow">
+        <div className="bg-card rounded-vibe border border-border p-5 hover:shadow-md transition-shadow">
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-1">{task.task_name}</h3>
+                    <h3 className="font-semibold text-foreground mb-1">{task.task_name}</h3>
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
                             {statusConfig.icon}
                             {statusConfig.label}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                             {DATA_TYPE_LABELS[task.data_type] || task.data_type}
                         </span>
                         {task.target_companies && task.target_companies.length > 0 && (
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-muted-foreground">
                                 目标: {task.target_companies.slice(0, 3).join(',')}
                                 {task.target_companies.length > 3 ? ` +${task.target_companies.length - 3}` : ''}
                             </span>
@@ -114,13 +114,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
 
             {/* Progress */}
             <div className="mb-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <div className="flex justify-between text-sm text-muted-foreground mb-1">
                     <span>进度</span>
                     <span>{Number(task.progress || 0).toFixed(1)}%</span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-border rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-blue-600 rounded-full transition-all duration-300"
+                        className="h-full bg-primary rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(100, Number(task.progress || 0))}%` }}
                     />
                 </div>
@@ -128,22 +128,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3 mb-4 text-center">
-                <div className="bg-gray-50 rounded-lg p-2">
-                    <div className="text-lg font-semibold text-gray-900">{task.total_count}</div>
-                    <div className="text-xs text-gray-500">总数</div>
+                <div className="bg-muted rounded-vibe-sm p-2">
+                    <div className="text-lg font-semibold text-foreground">{task.total_count}</div>
+                    <div className="text-xs text-muted-foreground">总数</div>
                 </div>
-                <div className="bg-green-50 rounded-lg p-2">
-                    <div className="text-lg font-semibold text-green-600">{task.success_count}</div>
-                    <div className="text-xs text-gray-500">成功</div>
+                <div className="bg-[rgba(19,177,90,0.06)] rounded-vibe-sm p-2">
+                    <div className="text-lg font-semibold text-success">{task.success_count}</div>
+                    <div className="text-xs text-muted-foreground">成功</div>
                 </div>
-                <div className="bg-red-50 rounded-lg p-2">
-                    <div className="text-lg font-semibold text-red-600">{task.error_count}</div>
-                    <div className="text-xs text-gray-500">失败</div>
+                <div className="bg-[rgba(239,68,68,0.06)] rounded-vibe-sm p-2">
+                    <div className="text-lg font-semibold text-destructive">{task.error_count}</div>
+                    <div className="text-xs text-muted-foreground">失败</div>
                 </div>
             </div>
 
             {/* Time Info */}
-            <div className="text-xs text-gray-500 space-y-1 mb-4">
+            <div className="text-xs text-muted-foreground space-y-1 mb-4">
                 <div className="flex justify-between">
                     <span>创建时间:</span>
                     <span>{formatDate(task.created_at)}</span>
@@ -164,22 +164,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
 
             {/* Detail Log */}
             {hasLog && (
-                <div className="mb-4 border border-gray-100 rounded-lg overflow-hidden">
+                <div className="mb-4 border border-border rounded-vibe-sm overflow-hidden">
                     <button
                         type="button"
                         onClick={() => setShowLog(v => !v)}
-                        className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-gray-100 text-sm text-gray-700"
+                        className="w-full flex items-center justify-between px-3 py-2 bg-muted hover:bg-muted text-sm text-foreground"
                     >
                         <span className="font-medium">执行明细</span>
                         {showLog ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                     {!showLog && (
-                        <pre className="px-3 py-2 text-[11px] leading-relaxed text-gray-500 bg-white whitespace-pre-wrap break-words max-h-16 overflow-hidden">
+                        <pre className="px-3 py-2 text-[11px] leading-relaxed text-muted-foreground bg-card whitespace-pre-wrap break-words max-h-16 overflow-hidden">
                             {logPreview}
                         </pre>
                     )}
                     {showLog && (
-                        <pre className="px-3 py-2 text-[11px] leading-relaxed text-gray-700 bg-slate-950 text-slate-100 whitespace-pre-wrap break-words max-h-64 overflow-auto">
+                        <pre className="px-3 py-2 text-[11px] leading-relaxed text-foreground bg-[#1e1a16] text-[#f2ede7] whitespace-pre-wrap break-words max-h-64 overflow-auto">
                             {detailLog}
                         </pre>
                     )}
@@ -191,7 +191,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
                 {canCancel && (
                     <button
                         onClick={() => onCancel(task.id)}
-                        className="flex-1 px-3 py-2 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors text-sm font-medium"
+                        className="flex-1 px-3 py-2 bg-[rgba(244,179,102,0.1)] text-warning rounded-vibe-sm hover:bg-[rgba(244,179,102,0.15)] transition-colors text-sm font-medium"
                     >
                         取消任务
                     </button>
@@ -199,7 +199,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onCancel, onDelete }) 
                 {canDelete && (
                     <button
                         onClick={() => onDelete(task.id)}
-                        className="flex-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                        className="flex-1 px-3 py-2 bg-[rgba(239,68,68,0.06)] text-destructive rounded-vibe-sm hover:bg-[rgba(239,68,68,0.12)] transition-colors text-sm font-medium flex items-center justify-center gap-1"
                     >
                         <Trash2 className="w-4 h-4" />
                         删除

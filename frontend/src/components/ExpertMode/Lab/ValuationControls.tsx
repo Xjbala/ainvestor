@@ -57,7 +57,7 @@ export function ValuationControls({
             </div>
             
             {(currentTab === 'RELATIVE' || currentTab === 'TRIANGULATE' || currentTab === 'SOTP') && (
-                <div className="text-sm text-gray-500 py-2">
+                <div className="text-sm text-muted-foreground py-2">
                     {currentTab === 'RELATIVE'
                         ? '相对估值使用同业中位数倍数，无需手动调参。切换到 DCF/RIM 可调整绝对估值假设。'
                         : currentTab === 'SOTP'

@@ -29,8 +29,8 @@ export function ValuationHeader({
             <div className="lab-title">
                 <h1>估值实验室</h1>
                 {(ticker || name) && (
-                    <div className="lab-subtitle" style={{ marginTop: 4, fontSize: 13, color: '#6b7280' }}>
-                        {ticker && <span style={{ fontWeight: 600, color: '#111827' }}>{ticker}</span>}
+                    <div className="lab-subtitle" style={{ marginTop: 4, fontSize: 13, color: 'var(--muted-foreground)' }}>
+                        {ticker && <span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{ticker}</span>}
                         {name && <span style={{ marginLeft: 8 }}>{name}</span>}
                         {currentPrice != null && Number.isFinite(currentPrice) && (
                             <span style={{ marginLeft: 12 }}>

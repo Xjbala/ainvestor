@@ -44,7 +44,7 @@ export function DCFTabPanel({
 }: DCFTabPanelProps) {
     if (!data) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 {loading ? '加载 DCF 估值...' : '暂无 DCF 数据'}
             </div>
         );
@@ -141,9 +141,9 @@ export function DCFTabPanel({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: '#f9fafb',
+                                background: 'var(--muted)',
                                 borderRadius: '8px',
-                                color: '#9ca3af'
+                                color: 'var(--muted-foreground)'
                             }}
                         >
                             {loading ? 'Loading Chart...' : data ? '无图表数据' : '等待估值模型数据...'}
@@ -162,12 +162,12 @@ export function DCFTabPanel({
 
             {/* WACC 拆解 + 双终值 + gates */}
             {(data?.wacc_breakdown || data?.valuation?.terminal_methods || data?.gates) && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">WACC / 终值交叉验证</h3>
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-3">WACC / 终值交叉验证</h3>
                     {data?.wacc_breakdown && !data.wacc_breakdown.error && (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
                             <div>
-                                <span className="text-gray-500">自动 WACC</span>
+                                <span className="text-muted-foreground">自动 WACC</span>
                                 <div className="font-mono font-semibold">
                                     {data.wacc_breakdown.wacc != null
                                         ? `${(Number(data.wacc_breakdown.wacc) * 100).toFixed(2)}%`
@@ -175,7 +175,7 @@ export function DCFTabPanel({
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">Ke / β</span>
+                                <span className="text-muted-foreground">Ke / β</span>
                                 <div className="font-mono text-xs">
                                     {data.wacc_breakdown.ke != null
                                         ? `${(Number(data.wacc_breakdown.ke) * 100).toFixed(2)}%`
@@ -186,7 +186,7 @@ export function DCFTabPanel({
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">Rf / ERP</span>
+                                <span className="text-muted-foreground">Rf / ERP</span>
                                 <div className="font-mono text-xs">
                                     {data.wacc_breakdown.rf != null
                                         ? `${(Number(data.wacc_breakdown.rf) * 100).toFixed(1)}%`
@@ -197,7 +197,7 @@ export function DCFTabPanel({
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">Kd / 税率</span>
+                                <span className="text-muted-foreground">Kd / 税率</span>
                                 <div className="font-mono text-xs">
                                     {data.wacc_breakdown.kd != null
                                         ? `${(Number(data.wacc_breakdown.kd) * 100).toFixed(2)}%`
@@ -212,28 +212,28 @@ export function DCFTabPanel({
                     {data?.valuation?.terminal_methods && (
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
                             <div>
-                                <span className="text-gray-500">Gordon 终值</span>
+                                <span className="text-muted-foreground">Gordon 终值</span>
                                 <div className="font-mono text-xs">
                                     {fmtMoneyYi(data.valuation.terminal_methods.tv_gordon)}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">Exit Multiple</span>
+                                <span className="text-muted-foreground">Exit Multiple</span>
                                 <div className="font-mono text-xs">
                                     {fmtMoneyYi(data.valuation.terminal_methods.tv_exit_multiple)}
-                                    <span className="text-gray-400 ml-1">
+                                    <span className="text-muted-foreground ml-1">
                                         ({data.valuation.terminal_methods.exit_ev_ebitda ?? '—'}x)
                                     </span>
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">中点终值</span>
+                                <span className="text-muted-foreground">中点终值</span>
                                 <div className="font-mono text-xs">
                                     {fmtMoneyYi(data.valuation.terminal_methods.tv_blended)}
                                 </div>
                             </div>
                             <div>
-                                <span className="text-gray-500">终值偏差</span>
+                                <span className="text-muted-foreground">终值偏差</span>
                                 <div className="font-mono text-xs">
                                     {data.valuation.terminal_methods.divergence_pct != null
                                         ? `${data.valuation.terminal_methods.divergence_pct}%`
@@ -249,7 +249,7 @@ export function DCFTabPanel({
                                 <span
                                     key={i}
                                     className={`text-xs px-2 py-1 rounded ${
-                                        g.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-800'
+                                        g.ok ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning-foreground'
                                     }`}
                                     title={g.message || g.name}
                                 >
@@ -264,10 +264,10 @@ export function DCFTabPanel({
 
             {/* DCF 预测记录表格 */}
             {data?.valuation?.calculation_detail && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
                         预测记录 (T1-T5)
-                        <span className="ml-2 text-sm font-normal text-gray-500">
+                        <span className="ml-2 text-sm font-normal text-muted-foreground">
                             基准年: {data.base_report_date?.split('-')[0] || '---'}
                         </span>
                     </h3>
@@ -297,7 +297,7 @@ export function DCFTabPanel({
                             </tbody>
                         </table>
                     </div>
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div className="mt-3 text-xs text-muted-foreground">
                         * 预测值基于 {data.parameters?.growth_rate ? (data.parameters.growth_rate * 100).toFixed(0) : '---'}% 增长率计算
                         {data.valuation.scenarios && (
                             <span className="ml-2">
@@ -310,23 +310,23 @@ export function DCFTabPanel({
 
             {/* DCF 估值详情 */}
             {data?.valuation && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">估值详情</h3>
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-3">估值详情</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span className="text-gray-500">内在价值:</span>
+                            <span className="text-muted-foreground">内在价值:</span>
                             <span className="ml-2 font-mono">¥{data.valuation?.intrinsic_value_per_share?.toLocaleString() || '---'}</span>
                         </div>
                         <div>
-                            <span className="text-gray-500">安全边际:</span>
+                            <span className="text-muted-foreground">安全边际:</span>
                             <span className="ml-2 font-mono">{data.margin_of_safety?.margin_percent?.toFixed(1) || '---'}%</span>
                         </div>
                         <div>
-                            <span className="text-gray-500">WACC:</span>
+                            <span className="text-muted-foreground">WACC:</span>
                             <span className="ml-2 font-mono">{(data.parameters?.discount_rate * 100).toFixed(1) || '---'}%</span>
                         </div>
                         <div>
-                            <span className="text-gray-500">永续增长率:</span>
+                            <span className="text-muted-foreground">永续增长率:</span>
                             <span className="ml-2 font-mono">{(data.parameters?.terminal_growth_rate * 100).toFixed(1) || '---'}%</span>
                         </div>
                     </div>

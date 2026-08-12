@@ -12,20 +12,20 @@ import { crawlerApi, type NewsItem } from '../../services/crawlerApi';
 const SENTIMENT_CONFIG: Record<string, { label: string; color: string; bgColor: string; icon: React.ReactNode }> = {
     positive: {
         label: '正面',
-        color: 'text-green-700',
-        bgColor: 'bg-green-100',
+        color: 'text-success',
+        bgColor: 'bg-[rgba(19,177,90,0.12)]',
         icon: <TrendingUp className="w-3.5 h-3.5" />,
     },
     negative: {
         label: '负面',
-        color: 'text-red-700',
-        bgColor: 'bg-red-100',
+        color: 'text-destructive',
+        bgColor: 'bg-[rgba(239,68,68,0.12)]',
         icon: <TrendingDown className="w-3.5 h-3.5" />,
     },
     neutral: {
         label: '中性',
-        color: 'text-gray-600',
-        bgColor: 'bg-gray-100',
+        color: 'text-muted-foreground',
+        bgColor: 'bg-muted',
         icon: <Minus className="w-3.5 h-3.5" />,
     },
 };
@@ -70,7 +70,7 @@ export const NewsViewer: React.FC = () => {
                 <select
                     value={days}
                     onChange={(e) => setDays(Number(e.target.value))}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                    className="px-3 py-1.5 border border-input rounded-vibe-sm text-sm"
                 >
                     <option value={30}>近 30 天</option>
                     <option value={90}>近 90 天</option>
@@ -81,32 +81,32 @@ export const NewsViewer: React.FC = () => {
 
             {/* 加载/错误/空状态 */}
             {isLoading && (
-                <div className="flex items-center justify-center py-20 text-gray-500">
+                <div className="flex items-center justify-center py-20 text-muted-foreground">
                     <Loader2 className="w-6 h-6 animate-spin mr-2" /> 加载中...
                 </div>
             )}
             {error && (
-                <div className="flex items-center gap-2 py-10 text-red-600">
+                <div className="flex items-center gap-2 py-10 text-destructive">
                     <AlertCircle className="w-5 h-5" /> {error}
                 </div>
             )}
             {!isLoading && !error && !stockCode && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                     <Newspaper className="w-12 h-12 mb-3" />
                     <p>请先选择一家公司查看新闻舆情</p>
                 </div>
             )}
             {!isLoading && !error && stockCode && news.length === 0 && (
-                <div className="text-center py-10 text-gray-500">暂无新闻数据</div>
+                <div className="text-center py-10 text-muted-foreground">暂无新闻数据</div>
             )}
 
             {/* 情绪统计条 */}
             {news.length > 0 && (
-                <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl">
-                    <div className="text-sm text-gray-600">
-                        共 <span className="font-bold text-gray-900">{news.length}</span> 条新闻
+                <div className="flex items-center gap-4 mb-6 p-4 bg-muted rounded-vibe">
+                    <div className="text-sm text-muted-foreground">
+                        共 <span className="font-bold text-foreground">{news.length}</span> 条新闻
                     </div>
-                    <div className="h-6 w-px bg-gray-300" />
+                    <div className="h-6 w-px bg-border" />
                     {['positive', 'negative', 'neutral'].map((label) => {
                         const cfg = SENTIMENT_CONFIG[label];
                         const count = stats[label] || 0;
@@ -115,20 +115,20 @@ export const NewsViewer: React.FC = () => {
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${cfg.bgColor} ${cfg.color}`}>
                                     {cfg.icon} {cfg.label}
                                 </span>
-                                <span className="text-sm font-semibold text-gray-800">{count}</span>
+                                <span className="text-sm font-semibold text-foreground">{count}</span>
                             </div>
                         );
                     })}
-                    <div className="h-6 w-px bg-gray-300" />
-                    <div className="text-sm text-gray-600">
+                    <div className="h-6 w-px bg-border" />
+                    <div className="text-sm text-muted-foreground">
                         平均情绪分:{' '}
                         <span
                             className={`font-bold ${
                                 avgScore > 0.1
-                                    ? 'text-green-600'
+                                    ? 'text-success'
                                     : avgScore < -0.1
-                                    ? 'text-red-600'
-                                    : 'text-gray-800'
+                                    ? 'text-destructive'
+                                    : 'text-foreground'
                             }`}
                         >
                             {avgScore.toFixed(3)}
@@ -145,7 +145,7 @@ export const NewsViewer: React.FC = () => {
                         return (
                             <div
                                 key={item.id}
-                                className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow"
+                                className="bg-card rounded-vibe-sm border border-border p-4 hover:shadow-sm transition-shadow"
                             >
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex-1 min-w-0">
@@ -155,25 +155,25 @@ export const NewsViewer: React.FC = () => {
                                                 href={item.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="text-sm font-medium text-gray-800 hover:text-blue-600 line-clamp-2"
+                                                className="text-sm font-medium text-foreground hover:text-primary line-clamp-2"
                                             >
                                                 {item.title}
                                                 <ExternalLink className="w-3 h-3 inline ml-1 opacity-40" />
                                             </a>
                                         ) : (
-                                            <p className="text-sm font-medium text-gray-800 line-clamp-2">
+                                            <p className="text-sm font-medium text-foreground line-clamp-2">
                                                 {item.title}
                                             </p>
                                         )}
                                         {/* 日期 + 情绪 */}
                                         <div className="flex items-center gap-3 mt-2">
-                                            <span className="text-xs text-gray-400">{item.publish_date}</span>
+                                            <span className="text-xs text-muted-foreground">{item.publish_date}</span>
                                             <span
                                                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium ${cfg.bgColor} ${cfg.color}`}
                                             >
                                                 {cfg.icon} {cfg.label}
                                             </span>
-                                            <span className="text-xs text-gray-500 font-mono">
+                                            <span className="text-xs text-muted-foreground font-mono">
                                                 分数: {item.sentiment_score.toFixed(3)}
                                             </span>
                                         </div>
@@ -183,7 +183,7 @@ export const NewsViewer: React.FC = () => {
                                                 {item.keywords.slice(0, 8).map((kw, i) => (
                                                     <span
                                                         key={i}
-                                                        className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded text-xs"
+                                                        className="px-1.5 py-0.5 bg-brand-50 text-primary rounded text-xs"
                                                     >
                                                         {kw}
                                                     </span>

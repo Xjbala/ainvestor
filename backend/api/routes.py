@@ -140,6 +140,19 @@ async def get_session(session_id: str):
     )
 
 
+@router.delete("/sessions/{session_id}", status_code=204)
+async def delete_session(session_id: str):
+    """删除已结束的分析会话、Agent 输出和评级报告。"""
+    db = await get_database()
+    try:
+        deleted = await db.delete_session(session_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+
 @router.get("/sessions/{session_id}/outputs", response_model=List[AgentOutputResponse])
 async def get_session_outputs(session_id: str):
     """获取会话的Agent输出"""

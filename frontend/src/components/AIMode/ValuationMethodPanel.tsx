@@ -150,6 +150,60 @@ export function ValuationMethodPanel({
                 </table>
             )}
 
+            {/* 价格对比条形图 */}
+            {(() => {
+                const allPrices = [
+                    ...methods.map(m => ({ label: METHOD_LABEL[m.method] || m.method, price: m.price, type: m.method.toLowerCase() })),
+                    ...(blendedPrice != null ? [{ label: '综合公允价', price: blendedPrice, type: 'blended' }] : []),
+                ].filter(p => p.price != null && p.price > 0);
+
+                if (allPrices.length === 0) return null;
+
+                const maxPrice = Math.max(...allPrices.map(p => p.price!), currentPrice ?? 0);
+                const currentPct = currentPrice && maxPrice > 0 ? (currentPrice / maxPrice) * 100 : 0;
+
+                return (
+                    <div className="vmp-bars">
+                        {allPrices.map(({ label, price, type }) => {
+                            const widthPct = maxPrice > 0 ? (price! / maxPrice) * 100 : 0;
+                            return (
+                                <div key={label} className="vmp-bar-row">
+                                    <span className="vmp-bar-label">{label}</span>
+                                    <div className="vmp-bar-track">
+                                        <div
+                                            className={`vmp-bar-fill fill-${type}`}
+                                            style={{ width: `${Math.max(widthPct, 8)}%` }}
+                                        />
+                                        {currentPct > 0 && currentPct < 100 && (
+                                            <div
+                                                className="vmp-bar-current-line"
+                                                style={{ left: `${currentPct}%` }}
+                                            />
+                                        )}
+                                    </div>
+                                    <span className="vmp-bar-price">¥{price!.toFixed(2)}</span>
+                                </div>
+                            );
+                        })}
+                        {currentPrice != null && currentPrice > 0 && (
+                            <div className="vmp-bar-row is-current">
+                                <span className="vmp-bar-label">现价</span>
+                                <div className="vmp-bar-track">
+                                    <div
+                                        className="vmp-bar-fill"
+                                        style={{
+                                            width: `${Math.max(currentPct, 4)}%`,
+                                            background: 'var(--destructive)',
+                                        }}
+                                    />
+                                </div>
+                                <span className="vmp-bar-price">¥{currentPrice.toFixed(2)}</span>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
+
             {divHigh && (
                 <div className="vmp-warn">
                     方法分歧较大（&gt;30%），综合价置信度下降，请结合假设与行业特性判断。

@@ -210,8 +210,43 @@ export function stripThinkingContent(content: string): string {
 
         const block = findBalancedList(text, lb);
         if (!block) {
-            result += '[';
-            i = lb + 1;
+            // 内容块被截断（后端 800 字截断导致闭合 '}] 丢失）
+            // 用宽松正则提取 text 字段中的内容
+            const tail = text.slice(lb);
+            const textMatch = tail.match(/['"]text['"]\s*:\s*(['"])([\s\S]*)/);
+            if (textMatch) {
+                let raw = textMatch[2];
+                // 截断块没有闭合引号，用多种边界确定文本结束位置：
+                // 1) 下一个内容块开始 [{  2) 段落分隔符 \n---  3) 节标题 \n### 
+                const boundaries = [
+                    raw.indexOf('[{'),
+                    raw.indexOf('\\n---'),
+                    raw.indexOf("\\n### "),
+                ].filter((x) => x >= 0);
+                if (boundaries.length > 0) {
+                    raw = raw.slice(0, Math.min(...boundaries));
+                }
+                // 反转义 \n \t 等
+                const decoded = raw
+                    .replace(/\\n/g, '\n')
+                    .replace(/\\t/g, '\t')
+                    .replace(/\\r/g, '\r')
+                    .replace(/\\'/g, "'")
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\')
+                    .trim();
+                if (decoded) {
+                    result += `\n\n${decoded}\n\n`;
+                }
+            }
+            // 跳过截断块：找下一个内容块边界或段落分隔符
+            const nextBlockStart = text.indexOf('[{', lb + 2);
+            const nextSection = text.indexOf('\n### ', lb + 1);
+            const nextHr = text.indexOf('\n---', lb + 1);
+            const stops = [nextBlockStart, nextSection, nextHr].filter(
+                (x) => x > 0,
+            );
+            i = stops.length > 0 ? Math.min(...stops) : text.length;
             continue;
         }
 
@@ -234,6 +269,24 @@ export function stripThinkingContent(content: string): string {
     text = text.replace(
         /\{\s*['"]type['"]\s*:\s*['"]thinking['"]\s*,[\s\S]*?\}\s*,?/g,
         ''
+    );
+
+    // 清理截断的单独 content block 残留（{'type': 'text', 'text': '...
+    // 后端截断导致闭合 '}] 丢失，前面 [ 的清理已处理带 [ 的情况，
+    // 这里处理不以 [ 开头但残留的 {'type': 'text'... 模式
+    text = text.replace(
+        /\{\s*['"]type['"]\s*:\s*['"]text['"]\s*,\s*['"]text['"]\s*:\s*(['"])([\s\S]*?)(?:\1\s*\}|$)/g,
+        (_match, _quote, content) => {
+            // 反转义并返回纯文本
+            return content
+                .replace(/\\n/g, '\n')
+                .replace(/\\t/g, '\t')
+                .replace(/\\r/g, '\r')
+                .replace(/\\'/g, "'")
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, '\\')
+                .trim();
+        }
     );
 
     // 清理空 list / 残留

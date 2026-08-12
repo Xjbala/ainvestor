@@ -39,7 +39,7 @@ export function RIMTabPanel({
 
     if (!data) {
         return (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
                 {loading ? '加载 RIM 估值...' : '暂无 RIM 数据'}
             </div>
         );
@@ -131,9 +131,9 @@ export function RIMTabPanel({
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                background: '#f9fafb',
+                                background: 'var(--muted)',
                                 borderRadius: '8px',
-                                color: '#9ca3af'
+                                color: 'var(--muted-foreground)'
                             }}
                         >
                             {loading ? 'Loading Chart...' : data ? '无图表数据' : '等待估值模型数据...'}
@@ -151,10 +151,10 @@ export function RIMTabPanel({
 
             {/* RIM 预测记录表格 */}
             {data?.valuation?.calculation_detail && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-4">
                         预测记录 (T1-T5)
-                        <span className="ml-2 text-sm font-normal text-gray-500">
+                        <span className="ml-2 text-sm font-normal text-muted-foreground">
                             基准年: {data.base_report_date?.split('-')[0] || '---'}
                             | 情景: {scenario === 'conservative' ? '保守' : scenario === 'base' ? '基准' : '乐观'}
                         </span>
@@ -205,7 +205,7 @@ export function RIMTabPanel({
                             </tbody>
                         </table>
                     </div>
-                    <div className="mt-3 text-xs text-gray-500">
+                    <div className="mt-3 text-xs text-muted-foreground">
                         * 预测值基于 {data.parameters?.growth_rate ? (data.parameters.growth_rate * 100).toFixed(0) : '---'}% 增长率和 {data.parameters?.payout_ratio ? (data.parameters.payout_ratio * 100).toFixed(0) : '---'}% 股利支付率计算
                         <span className="ml-2">
                             | {scenario === 'conservative' ? '保守情景：RE递减至0' : scenario === 'base' ? '基准情景：RE保持稳定' : '乐观情景：RE持续增长'}
@@ -216,19 +216,19 @@ export function RIMTabPanel({
 
             {/* RIM 估值详情 */}
             {data?.valuation && (
-                <div className="mt-6 bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">估值详情</h3>
+                <div className="mt-6 bg-card rounded-vibe-sm border border-border p-4">
+                    <h3 className="text-lg font-semibold text-foreground mb-3">估值详情</h3>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                            <span className="text-gray-500">内在价值:</span>
+                            <span className="text-muted-foreground">内在价值:</span>
                             <span className="ml-2 font-mono">¥{data.valuation?.intrinsic_value_per_share?.toLocaleString() || '---'}</span>
                         </div>
                         <div>
-                            <span className="text-gray-500">安全边际:</span>
+                            <span className="text-muted-foreground">安全边际:</span>
                             <span className="ml-2 font-mono">{data.margin_of_safety?.margin_percent?.toFixed(1) || '---'}%</span>
                         </div>
                         <div>
-                            <span className="text-gray-500">股权成本:</span>
+                            <span className="text-muted-foreground">股权成本:</span>
                             <span className="ml-2 font-mono">
                                 {data.parameters?.cost_of_equity != null
                                     ? (Number(data.parameters.cost_of_equity) * 100).toFixed(1)
@@ -237,7 +237,7 @@ export function RIMTabPanel({
                             </span>
                         </div>
                         <div>
-                            <span className="text-gray-500">增长率:</span>
+                            <span className="text-muted-foreground">增长率:</span>
                             <span className="ml-2 font-mono">
                                 {data.parameters?.growth_rate != null
                                     ? (Number(data.parameters.growth_rate) * 100).toFixed(1)

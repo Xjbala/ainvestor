@@ -1,10 +1,15 @@
+/* ============================================
+   Model Explanation — Golden Time 浅色主题
+   估值模型说明弹窗：暖白底 + 深棕主色
+   ============================================ */
+
 .model-explanation-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(59, 53, 43, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -13,41 +18,31 @@
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .model-explanation-container {
-  background: white;
-  border-radius: 12px;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   width: 90%;
   max-width: 900px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease-out;
 }
 
 @keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 .model-explanation-header {
   position: sticky;
   top: 0;
-  background: white;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--popover);
+  border-bottom: 1px solid var(--border);
   padding: 20px 24px;
   display: flex;
   justify-content: space-between;
@@ -59,14 +54,15 @@
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: #111827;
+  color: var(--foreground);
+  font-family: var(--font-serif);
 }
 
 .close-button {
   background: none;
   border: none;
   font-size: 28px;
-  color: #6b7280;
+  color: var(--muted-foreground);
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -74,13 +70,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  transition: all 0.2s;
+  border-radius: calc(var(--radius) - 12px);
+  transition: all var(--transition-fast);
 }
 
 .close-button:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .model-explanation-content {
@@ -95,35 +91,37 @@
   margin: 0 0 16px 0;
   font-size: 18px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
   display: flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--font-serif);
 }
 
 .explanation-section > p {
   margin: 0 0 16px 0;
-  color: #4b5563;
+  color: var(--muted-foreground);
   line-height: 1.6;
 }
 
+/* 公式块 —— 品牌棕金渐变 */
 .formula-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-700) 100%);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: calc(var(--radius) - 8px);
   margin: 16px 0;
 }
 
 .formula-box .formula {
   margin: 8px 0;
-  color: white;
-  font-family: 'Courier New', monospace;
+  color: var(--primary-foreground);
+  font-family: var(--font-mono);
   font-size: 15px;
   font-weight: 500;
 }
 
 .description {
-  color: #6b7280;
+  color: var(--muted-foreground);
   font-size: 14px;
   line-height: 1.6;
   margin-top: 8px;
@@ -136,29 +134,30 @@
 }
 
 .formula-item {
-  background: #f9fafb;
+  background: var(--muted);
   padding: 16px;
-  border-radius: 8px;
-  border-left: 4px solid #6366f1;
+  border-radius: calc(var(--radius) - 8px);
+  border-left: 4px solid var(--brand-500);
 }
 
 .formula-item h4 {
   margin: 0 0 8px 0;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .formula-item .formula {
   margin: 8px 0;
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 14px;
-  color: #4b5563;
-  background: white;
+  color: var(--muted-foreground);
+  background: var(--card);
   padding: 8px 12px;
   border-radius: 4px;
 }
 
+/* === 情景卡片 === */
 .scenario-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -167,7 +166,7 @@
 
 .scenario-card {
   padding: 20px;
-  border-radius: 8px;
+  border-radius: calc(var(--radius) - 8px);
   border: 2px solid;
 }
 
@@ -189,48 +188,52 @@
   margin: 0 0 12px 0;
   font-size: 14px;
   line-height: 1.5;
-  color: #4b5563;
+  color: var(--muted-foreground);
 }
 
 .scenario-card .scenario-examples {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--muted-foreground);
 }
 
+/* 保守 —— 红色系（destructive） */
 .scenario-card.conservative {
-  border-color: #ef4444;
-  background: #fef2f2;
+  border-color: var(--destructive);
+  background: rgba(239, 68, 68, 0.06);
 }
 
 .scenario-card.conservative .scenario-assumption {
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--destructive);
 }
 
+/* 基准 —— 品牌棕金 */
 .scenario-card.base {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: var(--brand-500);
+  background: var(--brand-50);
 }
 
 .scenario-card.base .scenario-assumption {
-  background: #dbeafe;
-  color: #2563eb;
+  background: rgba(155, 150, 95, 0.15);
+  color: var(--brand-700);
 }
 
+/* 乐观 —— 绿色系（success） */
 .scenario-card.optimistic {
-  border-color: #10b981;
-  background: #ecfdf5;
+  border-color: var(--success);
+  background: rgba(19, 177, 90, 0.06);
 }
 
 .scenario-card.optimistic .scenario-assumption {
-  background: #d1fae5;
-  color: #059669;
+  background: rgba(19, 177, 90, 0.12);
+  color: var(--success);
 }
 
+/* === 参数表格 === */
 .parameter-table {
   overflow-x: auto;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border-radius: calc(var(--radius) - 8px);
+  border: 1px solid var(--border);
 }
 
 .parameter-table table {
@@ -239,7 +242,7 @@
 }
 
 .parameter-table thead {
-  background: #f9fafb;
+  background: var(--muted);
 }
 
 .parameter-table th {
@@ -247,21 +250,22 @@
   text-align: left;
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
 }
 
 .parameter-table td {
   padding: 12px 16px;
   font-size: 14px;
-  color: #4b5563;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--muted-foreground);
+  border-bottom: 1px solid var(--border);
 }
 
 .parameter-table tr:last-child td {
   border-bottom: none;
 }
 
+/* === 步骤指引 === */
 .steps-container {
   display: flex;
   flex-direction: column;
@@ -277,8 +281,8 @@
 .step-number {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-700) 100%);
+  color: var(--primary-foreground);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -286,22 +290,24 @@
   font-weight: 600;
   font-size: 14px;
   flex-shrink: 0;
+  font-family: var(--font-sans);
 }
 
 .step-content h4 {
   margin: 0 0 4px 0;
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--foreground);
 }
 
 .step-content p {
   margin: 0;
   font-size: 14px;
-  color: #4b5563;
+  color: var(--muted-foreground);
   line-height: 1.5;
 }
 
+/* === 适用性 === */
 .applicability {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -310,7 +316,7 @@
 
 .applicability-item {
   padding: 16px;
-  border-radius: 8px;
+  border-radius: calc(var(--radius) - 8px);
 }
 
 .applicability-item h4 {
@@ -327,41 +333,42 @@
 }
 
 .applicability-item.applicable {
-  background: #ecfdf5;
-  border: 1px solid #d1fae5;
+  background: rgba(19, 177, 90, 0.06);
+  border: 1px solid rgba(19, 177, 90, 0.2);
 }
 
 .applicability-item.applicable h4 {
-  color: #059669;
+  color: var(--success);
 }
 
 .applicability-item.applicable li {
-  color: #065f46;
+  color: var(--success);
 }
 
 .applicability-item.not-applicable {
-  background: #fef2f2;
-  border: 1px solid #fee2e2;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
 .applicability-item.not-applicable h4 {
-  color: #dc2626;
+  color: var(--destructive);
 }
 
 .applicability-item.not-applicable li {
-  color: #991b1b;
+  color: var(--destructive);
 }
 
+/* === 警告区 === */
 .explanation-section.warning {
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
+  background: rgba(244, 179, 102, 0.1);
+  border: 1px solid rgba(244, 179, 102, 0.4);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: calc(var(--radius) - 8px);
   margin-bottom: 0;
 }
 
 .explanation-section.warning h3 {
-  color: #92400e;
+  color: var(--warning-foreground);
 }
 
 .warning-list {
@@ -373,14 +380,14 @@
   margin-bottom: 12px;
   font-size: 14px;
   line-height: 1.6;
-  color: #92400e;
+  color: var(--warning-foreground);
 }
 
 .warning-list li:last-child {
   margin-bottom: 0;
 }
 
-/* 响应式设计 */
+/* === 响应式 === */
 @media (max-width: 768px) {
   .model-explanation-container {
     width: 95%;
@@ -417,21 +424,21 @@
   }
 }
 
-/* 滚动条样式 */
+/* === 滚动条 === */
 .model-explanation-container::-webkit-scrollbar {
   width: 8px;
 }
 
 .model-explanation-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--muted);
   border-radius: 4px;
 }
 
 .model-explanation-container::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border);
   border-radius: 4px;
 }
 
 .model-explanation-container::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--muted-foreground);
 }

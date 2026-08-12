@@ -1,45 +1,52 @@
+/**
+ * Badge —— Golden Time 语义色
+ * 紧凑标签，小圆角（或 pill），quiet 背景 + 同色系描边。
+ */
+
 .badge {
     display: inline-flex;
     align-items: center;
     padding: 2px 8px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 700;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border: 1px solid transparent;
+    line-height: 1.4;
 }
 
 .badge-pill {
-    border-radius: 9999px;
+    border-radius: 999px;
 }
 
 .badge-primary {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--color-accent-secondary);
-    border-color: rgba(59, 130, 246, 0.2);
+    background: var(--brand-100);
+    color: var(--brand-700);
+    border-color: var(--brand-200);
 }
 
 .badge-success {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--color-success);
-    border-color: rgba(16, 185, 129, 0.2);
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success);
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
 }
 
 .badge-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--color-warning);
-    border-color: rgba(245, 158, 11, 0.2);
+    background: color-mix(in srgb, var(--warning) 18%, transparent);
+    color: var(--warning-foreground);
+    border-color: color-mix(in srgb, var(--warning) 35%, transparent);
 }
 
 .badge-error {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--color-error);
-    border-color: rgba(239, 68, 68, 0.2);
+    background: color-mix(in srgb, var(--destructive) 12%, transparent);
+    color: var(--destructive);
+    border-color: color-mix(in srgb, var(--destructive) 28%, transparent);
 }
 
 .badge-neutral {
-    background: var(--color-base-800);
-    color: var(--color-text-muted);
-    border-color: var(--color-border);
+    background: var(--muted);
+    color: var(--muted-foreground);
+    border-color: var(--border);
 }
