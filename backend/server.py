@@ -38,8 +38,8 @@ from backend.agents.tool_progress import with_tool_progress
 
 load_dotenv()
 # AgentScope prints thinking and tool content blocks to stdout by default.
-# The WebSocket lifecycle events are the supported production progress channel.
-os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "true"
+# Enable console output so server logs show agent execution details.
+os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "false"
 
 # 日志配置
 logging.basicConfig(
