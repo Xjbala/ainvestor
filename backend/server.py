@@ -67,12 +67,18 @@ def _create_analyst_toolkit(
             analyze_solvency,
             analyze_operating,
         )
+        from backend.agents.tools.qualitative_tools import (
+            get_qualitative_insights,
+            get_industry_competition,
+        )
         toolkit = Toolkit()
         for tool_function in (
             analyze_profitability,
             analyze_growth,
             analyze_solvency,
             analyze_operating,
+            get_qualitative_insights,
+            get_industry_competition,
         ):
             toolkit.register_tool_function(
                 with_tool_progress(tool_function) if report_tool_progress else tool_function,
