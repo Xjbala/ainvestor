@@ -21,6 +21,7 @@ import type { LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ConferenceMessage } from '../../types/message';
+import { stripThinkingContent } from '../../utils/reportUtils';
 import Card from '../Common/Card';
 import Badge from '../Common/Badge';
 import Button from '../Common/Button';
@@ -74,9 +75,10 @@ export function AgentFeed({ messages }: AgentFeedProps) {
                 ) : (
                     <div className="feed-list-v2">
                         {messages.map((msg) => {
+                            const content = stripThinkingContent(msg.content);
                             const isExpanded = expandedIds.has(msg.id);
-                            const needsTruncation = shouldTruncate(msg.content);
-                            const displayContent = isExpanded || !needsTruncation ? msg.content : truncateContent(msg.content);
+                            const needsTruncation = shouldTruncate(content);
+                            const displayContent = isExpanded || !needsTruncation ? content : truncateContent(content);
 
                             return (
                                 <Card

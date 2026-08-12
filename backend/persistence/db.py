@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 from dotenv import load_dotenv
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -132,10 +133,34 @@ async def init_database() -> None:
         )
         coverage_index.create(sync_conn, checkfirst=True)
 
+    async def _ensure_session_status_storage(conn) -> None:
+        """Allow cancelled sessions in databases created before that status existed."""
+        if conn.dialect.name != "mysql":
+            return
+
+        result = await conn.execute(
+            text("SHOW COLUMNS FROM analysis_sessions LIKE 'status'"),
+        )
+        column = result.mappings().first()
+        if not column:
+            return
+
+        column_type = str(column["Type"]).lower()
+        if not column_type.startswith("enum(") or "'cancelled'" in column_type:
+            return
+
+        await conn.execute(text(
+            "ALTER TABLE analysis_sessions MODIFY COLUMN status "
+            "ENUM('pending', 'running', 'completed', 'failed', 'cancelled') "
+            "NOT NULL DEFAULT 'pending'",
+        ))
+        _logger.info("Updated analysis_sessions.status enum to support cancelled")
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
             await conn.run_sync(_ensure_coverage_storage)
+            await _ensure_session_status_storage(conn)
     except Exception as e:
         # 历史库可能存在不兼容约束（如 JSON 唯一索引），全量 create_all 会失败。
         # 记录完整错误后，尝试仅确保新增关键表存在。
@@ -155,6 +180,7 @@ async def init_database() -> None:
                     )
                 )
                 await conn.run_sync(_ensure_coverage_storage)
+                await _ensure_session_status_storage(conn)
             _logger.warning("全量 create_all 失败，仅创建了关键表；请检查数据库约束")
         except Exception as fallback_err:
             _logger.error("关键表创建也失败: %s", fallback_err, exc_info=True)

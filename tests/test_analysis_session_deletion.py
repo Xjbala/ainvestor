@@ -69,6 +69,47 @@ class TestAnalysisSessionDeletion(unittest.TestCase):
                 self.assertEqual(0, session.query(RatingReport).count())
         finally:
             engine.dispose()
+    def test_cancelled_session_can_be_deleted_with_related_records(self):
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(
+            engine,
+            tables=[
+                AnalysisSession.__table__,
+                AgentOutput.__table__,
+                RatingReport.__table__,
+            ],
+        )
+        try:
+            with Session(engine) as session:
+                analysis = AnalysisSession(
+                    id="session-cancelled",
+                    tickers='["603137"]',
+                    date="2026-08-11",
+                    status=SessionStatus.CANCELLED,
+                    completed_at=datetime.now(),
+                )
+                analysis.outputs.append(
+                    AgentOutput(
+                        agent_id="fundamentals_analyst",
+                        agent_type="analyst",
+                        phase=AgentPhase.ANALYSIS,
+                        content="partial output",
+                    )
+                )
+                session.add(analysis)
+                session.commit()
+
+                session.delete(analysis)
+                session.commit()
+
+                self.assertIsNone(
+                    session.scalar(
+                        select(AnalysisSession).where(AnalysisSession.id == "session-cancelled")
+                    )
+                )
+                self.assertEqual(0, session.query(AgentOutput).count())
+        finally:
+            engine.dispose()
 
 
 if __name__ == "__main__":

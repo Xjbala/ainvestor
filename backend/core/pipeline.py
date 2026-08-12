@@ -1224,7 +1224,6 @@ class RatingPipeline:
         result = {
             "agent": msg.name,
             "content": plain,
-            "content_raw": msg.content,
         }
 
         if hasattr(msg, "metadata") and msg.metadata:
@@ -1404,7 +1403,7 @@ class RatingPipeline:
         if hasattr(content, "content"):
             return self._extract_text_content(getattr(content, "content"))
         if hasattr(content, "text"):
-            return str(getattr(content, "text") or "")
+            return self._sanitize_visible_text(str(getattr(content, "text") or ""))
 
         return self._extract_text_from_serialized(str(content))
 
@@ -1417,20 +1416,34 @@ class RatingPipeline:
         if not isinstance(item, dict):
             # 兼容对象属性访问
             item_type = getattr(item, "type", None)
-            if item_type in ("thinking", "reasoning", "tool_use", "tool_result"):
+            if item_type in (
+                "thinking",
+                "reasoning",
+                "tool_use",
+                "tool_call",
+                "function_call",
+                "tool_result",
+            ):
                 return ""
             text = getattr(item, "text", None)
             if text:
-                return str(text)
+                return self._sanitize_visible_text(str(text))
             return ""
 
         item_type = item.get("type")
-        if item_type in ("thinking", "reasoning", "tool_use", "tool_result"):
+        if item_type in (
+            "thinking",
+            "reasoning",
+            "tool_use",
+            "tool_call",
+            "function_call",
+            "tool_result",
+        ):
             return ""
         if item_type == "text" and item.get("text") is not None:
-            return str(item.get("text") or "")
+            return self._sanitize_visible_text(str(item.get("text") or ""))
         if "text" in item and item_type is None:
-            return str(item.get("text") or "")
+            return self._sanitize_visible_text(str(item.get("text") or ""))
         if "content" in item and item_type not in ("thinking", "reasoning"):
             return self._extract_text_content(item.get("content"))
         # 未知 dict：尝试常见字段
@@ -1466,40 +1479,40 @@ class RatingPipeline:
         if not raw:
             return ""
 
-        def _try_parse_whole(s: str) -> str:
+        def _try_parse_whole(s: str) -> tuple[bool, str]:
             # 兼容开头多余逗号：[, {...}]
             s2 = re.sub(r"^\[\s*,", "[", s.strip())
             try:
                 parsed = json.loads(s2)
-                return self._extract_text_content(parsed)
+                return self._is_content_block_container(parsed), self._extract_text_content(parsed)
             except Exception:
                 pass
             try:
                 import ast
 
                 parsed = ast.literal_eval(s2)
-                return self._extract_text_content(parsed)
+                return self._is_content_block_container(parsed), self._extract_text_content(parsed)
             except Exception:
-                return ""
+                return False, ""
 
         # 1) 整段就是 content blocks
         if (raw.startswith("[") and raw.endswith("]")) or (
             raw.startswith("{") and raw.endswith("}")
         ):
-            extracted = _try_parse_whole(raw)
-            if extracted:
+            is_block_container, extracted = _try_parse_whole(raw)
+            if is_block_container:
                 return extracted
 
         # 2) 报告中间夹了 blocks：替换每一段
         block_pat = re.compile(
             r"\[\s*,?\s*\{[\s\S]*?['\"]type['\"]\s*:\s*['\"]"
-            r"(?:thinking|text|reasoning|tool_use|tool_result)['\"]"
+            r"(?:thinking|text|reasoning|tool_use|tool_call|function_call|tool_result)['\"]"
             r"[\s\S]*?\}\s*\]"
         )
 
         def _replace_block(m: re.Match) -> str:
             inner = m.group(0)
-            got = _try_parse_whole(inner)
+            _, got = _try_parse_whole(inner)
             if got:
                 return "\n" + got + "\n"
             # 正则捞 text
@@ -1551,8 +1564,28 @@ class RatingPipeline:
                 if len(best) > 20:
                     return self._unescape_common(best).strip()
 
-        # 4) 清理残留 thinking 标签
-        cleaned = re.sub(r"<think>[\s\S]*?</think>", "", raw, flags=re.I)
+        # 4) 清理供应商以普通文本返回的推理和工具协议标签。
+        return self._sanitize_visible_text(raw)
+
+    @staticmethod
+    def _sanitize_visible_text(text: str) -> str:
+        """删除 LLM 供应商以普通文本返回的内部协议标签。"""
+        if not text:
+            return ""
+        # 这些不是给用户看的 Markdown，即使模型未按 OpenAI tool_calls 返回也不能入库。
+        protocol_tags = "think|thinking|reasoning|tool_use|tool_call|function_call|tool_result"
+        cleaned = re.sub(
+            rf"<(?:{protocol_tags})\b[^>]*>[\s\S]*?</(?:{protocol_tags})\s*>",
+            "",
+            text,
+            flags=re.I,
+        )
+        cleaned = re.sub(
+            rf"<(?:{protocol_tags})\b[^>]*>[\s\S]*$",
+            "",
+            cleaned,
+            flags=re.I,
+        )
         cleaned = re.sub(
             r"\{['\"]type['\"]\s*:\s*['\"]thinking['\"][\s\S]*?\}",
             "",
@@ -1562,3 +1595,24 @@ class RatingPipeline:
         cleaned = re.sub(r"\[\s*\]", "", cleaned)
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
         return cleaned.strip()
+
+    @staticmethod
+    def _is_content_block_container(value: Any) -> bool:
+        """判断已解析对象是否为 AgentScope content block 容器。"""
+        known_types = {
+            "text",
+            "thinking",
+            "reasoning",
+            "tool_use",
+            "tool_call",
+            "function_call",
+            "tool_result",
+        }
+        if isinstance(value, dict):
+            return value.get("type") in known_types
+        if isinstance(value, list):
+            return bool(value) and all(
+                isinstance(item, dict) and item.get("type") in known_types
+                for item in value
+            )
+        return False

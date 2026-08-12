@@ -395,6 +395,7 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                                         session.status === 'completed' ? 'bg-success' :
                                         session.status === 'running' ? 'bg-brand-500' :
                                         session.status === 'failed' ? 'bg-destructive' :
+                                        session.status === 'cancelled' ? 'bg-muted-foreground' :
                                         'bg-warning'
                                     }`}></div>
                                     <div>
@@ -404,7 +405,8 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                                         <div className="text-sm text-muted-foreground">
                                             {session.status === 'completed' ? (session.mode === 'expert' ? '专家模式' : 'AI分析') :
                                              session.status === 'running' ? '分析中' :
-                                             session.status === 'failed' ? '分析失败' : '未知'}
+                                             session.status === 'failed' ? '分析失败' :
+                                             session.status === 'cancelled' ? '已取消' : '未知'}
                                             {' · '}
                                             {formatTimeAgo(session.created_at)}
                                         </div>
@@ -424,6 +426,11 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                                     {session.status === 'failed' && (
                                         <span className="px-2 py-1 bg-destructive/10 text-destructive text-xs rounded font-medium">
                                             失败
+                                        </span>
+                                    )}
+                                    {session.status === 'cancelled' && (
+                                        <span className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded font-medium">
+                                            已取消
                                         </span>
                                     )}
                                     <button

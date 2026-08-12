@@ -37,6 +37,9 @@ from backend.websocket.state_sync import WebSocketStateSync
 from backend.agents.tool_progress import with_tool_progress
 
 load_dotenv()
+# AgentScope prints thinking and tool content blocks to stdout by default.
+# The WebSocket lifecycle events are the supported production progress channel.
+os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "true"
 
 # 日志配置
 logging.basicConfig(
@@ -216,6 +219,7 @@ async def run_analysis(
         if session:
             try:
                 await db.update_session_status(session.id, "cancelled")
+                logger.info("Analysis marked cancelled: session=%s", session.id)
             except Exception:
                 logger.exception("Failed to persist cancelled session=%s", session_id)
         raise

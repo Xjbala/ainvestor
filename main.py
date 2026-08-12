@@ -33,6 +33,9 @@ from backend.llm.models import get_agent_formatter, get_agent_model
 
 
 load_dotenv()
+# Keep CLI output focused on the final report instead of AgentScope's internal
+# thinking and tool protocol blocks.
+os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "true"
 logger = logging.getLogger(__name__)
 
 # 配置日志

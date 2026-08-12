@@ -121,6 +121,39 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
             )
 
         self.assertNotIn("failed", [event[0] for event in sync.events])
+    def test_raw_protocol_text_is_not_exposed_as_analysis_content(self):
+        pipeline = RatingPipeline(
+            analysts=[],
+            risk_manager=None,
+            portfolio_manager=None,
+        )
+
+        content = (
+            "分析开始。<think>内部推理</think>"
+            "<tool_use>{\"name\": \"analyze_profitability\"}</tool_use>"
+            "分析结论：财务状况稳定。"
+        )
+
+        self.assertEqual("分析开始。分析结论：财务状况稳定。", pipeline._extract_text_content(content))
+        self.assertEqual(
+            "",
+            pipeline._extract_text_content(
+                '{"type":"tool_use","name":"analyze_profitability","input":{}}',
+            ),
+        )
+
+    def test_text_block_protocol_is_not_exposed_as_analysis_content(self):
+        pipeline = RatingPipeline(
+            analysts=[],
+            risk_manager=None,
+            portfolio_manager=None,
+        )
+
+        content = [
+            {"type": "text", "text": "结论前。<tool_result>内部结果</tool_result>结论后。"},
+        ]
+
+        self.assertEqual("结论前。结论后。", pipeline._extract_text_content(content))
 
 
 if __name__ == "__main__":

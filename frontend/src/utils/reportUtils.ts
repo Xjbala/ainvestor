@@ -103,7 +103,7 @@ function extractFromParsed(parsed: unknown): string | null {
                 if (!item || typeof item !== 'object') return '';
                 const obj = item as Record<string, unknown>;
                 const t = obj.type;
-                if (t === 'thinking' || t === 'reasoning' || t === 'tool_use' || t === 'tool_result') {
+                if (t === 'thinking' || t === 'reasoning' || t === 'tool_use' || t === 'tool_call' || t === 'function_call' || t === 'tool_result') {
                     return '';
                 }
                 if (typeof obj.text === 'string') return obj.text;
@@ -115,7 +115,7 @@ function extractFromParsed(parsed: unknown): string | null {
     if (typeof parsed === 'object') {
         const obj = parsed as Record<string, unknown>;
         const t = obj.type;
-        if (t === 'thinking' || t === 'reasoning') return '';
+        if (t === 'thinking' || t === 'reasoning' || t === 'tool_use' || t === 'tool_call' || t === 'function_call' || t === 'tool_result') return '';
         if (typeof obj.text === 'string') return obj.text;
     }
     return null;
@@ -181,7 +181,11 @@ export function stripThinkingContent(content: string): string {
 
     if (wholeLooksLikeBlocks) {
         const cleaned = cleanBlockLiteral(trimmed);
-        if (cleaned) text = cleaned;
+        if (cleaned) {
+            text = cleaned;
+        } else if (/['"]type['"]\s*:\s*['"](?:thinking|reasoning|tool_use|tool_call|function_call|tool_result)['"]/i.test(trimmed)) {
+            text = '';
+        }
     }
 
     // 扫描全文，替换每一个 content-block list
@@ -251,7 +255,7 @@ export function stripThinkingContent(content: string): string {
         }
 
         // 仅当块内含 type=text/thinking 时才替换
-        if (/['"]type['"]\s*:\s*['"](?:text|thinking|reasoning|tool_use|tool_result)['"]/.test(block)) {
+        if (/['"]type['"]\s*:\s*['"](?:text|thinking|reasoning|tool_use|tool_call|function_call|tool_result)['"]/.test(block)) {
             const cleaned = cleanBlockLiteral(block);
             result += cleaned ? `\n\n${cleaned}\n\n` : '';
             i = lb + block.length;
@@ -261,6 +265,17 @@ export function stripThinkingContent(content: string): string {
         }
     }
     text = result;
+
+    // 移除供应商作为普通文本返回的推理和工具协议标签。
+    const protocolTags = 'think|thinking|reasoning|tool_use|tool_call|function_call|tool_result';
+    text = text.replace(
+        new RegExp(`<(${protocolTags})\\b[^>]*>[\\s\\S]*?<\\/(?:${protocolTags})\\s*>`, 'gi'),
+        '',
+    );
+    text = text.replace(
+        new RegExp(`<(${protocolTags})\\b[^>]*>[\\s\\S]*$`, 'gi'),
+        '',
+    );
 
     // 移除 <think>...</think>
     text = text.replace(/<think>[\s\S]*?<\/think>/gi, '');

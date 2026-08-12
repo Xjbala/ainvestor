@@ -5,6 +5,7 @@ import {
     extractInvestmentRecommendations,
     type InvestmentRecommendation,
 } from '../../utils/metricExtraction';
+import { stripThinkingContent } from '../../utils/reportUtils';
 import './AIMode.css';
 
 export interface AgentMessage {
@@ -21,21 +22,6 @@ interface CoordinationFlowProps {
 }
 
 const MAX_COLLAPSED_LINES = 12;
-
-/**
- * Strip LLM thinking/reasoning blocks from agent content.
- */
-function cleanThinkingContent(content: string): string {
-    if (!content) return content;
-
-    let cleaned = content.replace(
-        /\{['"]\s*type['"]\s*:\s*['"]\s*thinking['"]\s*,\s*['"]\s*thinking['"]\s*:\s*['"][\s\S]*?['"]\s*\}/g,
-        ''
-    );
-    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '');
-    cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
-    return cleaned;
-}
 
 function formatTargetPrice(recommendation: InvestmentRecommendation): string {
     const targetPrice = recommendation.target_price;
@@ -168,7 +154,7 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
             <div className="flow-timeline">
                 {messages.map((msg) => {
                     const typeClass = getTypeClass(msg.type);
-                    const cleanedContent = cleanThinkingContent(msg.content);
+                    const cleanedContent = stripThinkingContent(msg.content);
                     const isExpanded = expandedIds.has(msg.id);
                     const needsTruncation = shouldTruncate(cleanedContent);
                     const displayContent = isExpanded || !needsTruncation ? cleanedContent : truncateContent(cleanedContent);

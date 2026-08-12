@@ -63,6 +63,52 @@ class TestRunAnalysisCancellation(unittest.TestCase):
             database.update_session_status.await_args_list,
         )
 
+    def test_console_output_is_disabled_before_agent_construction(self):
+        asyncio.run(self._test_console_output_is_disabled_before_agent_construction())
+
+    async def _test_console_output_is_disabled_before_agent_construction(self):
+        database = MagicMock()
+        database.create_session = AsyncMock(
+            return_value=SimpleNamespace(id="session-completed"),
+        )
+        database.update_session_status = AsyncMock()
+
+        created_agents = []
+
+        class CompletedPipeline:
+            def __init__(self, analysts, risk_manager, portfolio_manager, **kwargs):
+                self._session_id = None
+                created_agents.extend([*analysts, risk_manager, portfolio_manager])
+
+            async def run_cycle(self, *args, **kwargs):
+                return {}
+
+        class RecordingAgent:
+            def __init__(self, *args, **kwargs):
+                self.console_output_disabled = (
+                    os.environ.get("AGENTSCOPE_DISABLE_CONSOLE_OUTPUT") == "true"
+                )
+
+        with (
+            patch("backend.server.get_database", new_callable=AsyncMock, return_value=database),
+            patch("backend.agents.AnalystAgent", RecordingAgent),
+            patch("backend.agents.RiskAgent", RecordingAgent),
+            patch("backend.agents.PMAgent", RecordingAgent),
+            patch("backend.config.constants.ANALYST_TYPES", {"fundamentals_analyst": {}}),
+            patch("backend.config.env_config.get_env_int", return_value=2),
+            patch("backend.llm.models.get_agent_model", return_value=MagicMock()),
+            patch("backend.llm.models.get_agent_formatter", return_value=MagicMock()),
+            patch("backend.core.pipeline.RatingPipeline", CompletedPipeline),
+        ):
+            await run_analysis(
+                tickers=["603137"],
+                date="2026-08-11",
+                session_id="session-completed",
+                session_sync=FakeSessionSync(),
+            )
+
+        self.assertTrue(all(agent.console_output_disabled for agent in created_agents))
+
 
 if __name__ == "__main__":
     unittest.main()

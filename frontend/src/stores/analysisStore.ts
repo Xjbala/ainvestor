@@ -180,15 +180,12 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
             };
 
         case 'CONFERENCE_MESSAGE': {
-            console.log('[Reducer] CONFERENCE_MESSAGE action:', action.payload);
             const newMessage = {
                 id: action.payload.id,
                 agent_id: action.payload.agent_id || '',
-                content: action.payload.content || '',
+                content: stripThinkingContent(action.payload.content || ''),
                 timestamp: action.payload.timestamp,
             };
-            console.log('[Reducer] Adding message to conferenceMessages:', newMessage);
-            console.log('[Reducer] Current conferenceMessages count:', state.conferenceMessages.length);
             return {
                 ...state,
                 conferenceMessages: [
@@ -320,12 +317,10 @@ export function useAnalysisStore() {
     const handleMessage = useCallback((message: WebSocketMessage) => {
         const { event, data, session_id, timestamp, message_id } = message;
 
-        // Log all incoming messages
-        console.log('[handleMessage] Received WebSocket message:', {
+        console.debug('[handleMessage] Received WebSocket event:', {
             event,
             session_id,
             data_keys: Object.keys(data || {}),
-            data_preview: JSON.stringify(data).substring(0, 200),
         });
 
         if (
@@ -405,10 +400,9 @@ export function useAnalysisStore() {
 
             case 'message':
             case 'summary':
-                console.log('[WebSocket] Conference message received:', {
+                console.debug('[WebSocket] Conference event received:', {
                     type: message.type,
                     agent_id: data.agent_id,
-                    content_preview: typeof data.content === 'string' ? data.content.substring(0, 100) : data.content,
                 });
                 dispatch({
                     type: 'CONFERENCE_MESSAGE',
@@ -419,7 +413,6 @@ export function useAnalysisStore() {
                         id: message_id,
                     },
                 });
-                console.log('[WebSocket] CONFERENCE_MESSAGE dispatched');
                 break;
 
             case 'round_end':
