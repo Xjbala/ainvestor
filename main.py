@@ -64,11 +64,20 @@ def create_toolkit(analyst_type: str):
             analyze_solvency,
             analyze_operating,
         )
+        from backend.agents.tools.qualitative_tools import (
+            get_qualitative_insights,
+            get_industry_competition,
+        )
         toolkit = Toolkit()
-        toolkit.register_tool_function(analyze_profitability)
-        toolkit.register_tool_function(analyze_growth)
-        toolkit.register_tool_function(analyze_solvency)
-        toolkit.register_tool_function(analyze_operating)
+        for tool_function in (
+            analyze_profitability,
+            analyze_growth,
+            analyze_solvency,
+            analyze_operating,
+            get_qualitative_insights,
+            get_industry_competition,
+        ):
+            toolkit.register_tool_function(tool_function)
         return toolkit
 
     elif analyst_type == "valuation_analyst":
