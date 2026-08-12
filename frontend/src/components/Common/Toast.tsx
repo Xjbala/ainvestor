@@ -5,7 +5,7 @@
  * 配色对齐 Golden Time 浅色主题：success/warning/error 用语义浅底，info 用品牌棕。
  */
 
-import React, { createContext, useCallback, useRef, useState, useMemo } from 'react';
+import React, { createContext, useCallback, useContext, useRef, useState, useMemo } from 'react';
 import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
 // ============================================================
@@ -34,6 +34,14 @@ interface ToastContextValue {
 // ============================================================
 
 const ToastContext = createContext<ToastContextValue | null>(null);
+
+export function useToast(): ToastContextValue {
+    const context = useContext(ToastContext);
+    if (!context) {
+        throw new Error('useToast must be used within a ToastProvider');
+    }
+    return context;
+}
 
 // ============================================================
 // Provider

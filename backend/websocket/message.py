@@ -28,6 +28,7 @@ class EventType(str, Enum):
     # System events
     SESSION_START = "session_start"
     SESSION_END = "session_end"
+    CANCELLATION_REQUESTED = "cancellation_requested"
     PING = "ping"
     PONG = "pong"
     
@@ -125,6 +126,16 @@ def create_session_end_message(
     )
 
 
+def create_cancellation_requested_message(session_id: str) -> WebSocketMessage:
+    """创建分析取消已受理消息。"""
+    return WebSocketMessage(
+        type=MessageType.SYSTEM,
+        event=EventType.CANCELLATION_REQUESTED,
+        session_id=session_id,
+        data={"status": "cancelling"},
+    )
+
+
 def create_agent_message(
     session_id: str,
     agent_id: str,
@@ -196,14 +207,23 @@ def create_report_message(session_id: str, report: str) -> WebSocketMessage:
     )
 
 
-def create_error_message(session_id: str, error: str, details: str = "") -> WebSocketMessage:
+def create_error_message(
+    session_id: str,
+    error: str,
+    details: str = "",
+    command: Optional[str] = None,
+) -> WebSocketMessage:
     """创建错误消息"""
+    data = {
+        "error": error,
+        "details": details,
+    }
+    if command:
+        data["command"] = command
+
     return WebSocketMessage(
         type=MessageType.ERROR,
         event=EventType.ERROR,
         session_id=session_id,
-        data={
-            "error": error,
-            "details": details,
-        }
+        data=data,
     )

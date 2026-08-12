@@ -9,6 +9,7 @@ interface DecisionFooterProps {
     onViewDetail?: () => void;
     onExportPDF?: () => void;
     onStopAnalysis?: () => void;
+    isStopRequested?: boolean;
 }
 
 export function DecisionFooter({
@@ -20,6 +21,7 @@ export function DecisionFooter({
     onViewDetail,
     onExportPDF,
     onStopAnalysis,
+    isStopRequested = false,
 }: DecisionFooterProps) {
 
     let displayReturn: string | number = '—';
@@ -94,8 +96,9 @@ export function DecisionFooter({
                         <button
                             className="btn-danger"
                             onClick={onStopAnalysis}
+                            disabled={isStopRequested}
                         >
-                            ⏹ 停止分析
+                            {isStopRequested ? '正在停止...' : '⏹ 停止分析'}
                         </button>
                     )}
                     <button className="btn-secondary" onClick={onViewDetail} disabled={isAnalyzing}>

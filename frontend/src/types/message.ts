@@ -5,6 +5,7 @@ export type MessageType = 'system' | 'agent' | 'conference' | 'prediction' | 're
 export type EventType =
   | 'session_start'
   | 'session_end'
+  | 'cancellation_requested'
   | 'ping'
   | 'pong'
   | 'analysis_start'
@@ -21,10 +22,16 @@ export type EventType =
   | 'report_generated'
   | 'error';
 
+export interface CommandErrorData extends Record<string, unknown> {
+  error?: string;
+  details?: string;
+  command?: string;
+}
+
 export interface WebSocketMessage {
   type: MessageType;
   event: EventType;
-  data: Record<string, unknown>;
+  data: CommandErrorData;
   session_id?: string;
   timestamp: string;
   message_id: string;

@@ -19,6 +19,7 @@ from .message import (
     WebSocketMessage,
     MessageType,
     EventType,
+    create_cancellation_requested_message,
     create_error_message,
     create_session_start_message,
 )
@@ -110,6 +111,13 @@ class WebSocketGateway:
     async def stop(self):
         """停止WebSocket服务器"""
         self._running = False
+        tasks = [task for task in self._current_tasks.values() if not task.done()]
+        if tasks:
+            logger.info("Cancelling %s active analysis task(s)", len(tasks))
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
         if self._server:
             self._server.close()
             await self._server.wait_closed()
@@ -295,11 +303,46 @@ class WebSocketGateway:
             self._cleanup_session(session_id)
     
     async def _handle_stop_analysis(self, websocket: WebSocketServerProtocol, data: Dict[str, Any]):
-        """停止当前连接发起的分析会话。"""
-        session_id = self._client_sessions.get(websocket)
-        task = self._current_tasks.get(session_id) if session_id else None
-        if not session_id or not task or task.done():
-            logger.info("No running analysis task for requesting client")
+        """停止当前连接订阅的指定分析会话。"""
+        command_data = data.get("data", {})
+        requested_session_id = (
+            command_data.get("session_id")
+            if isinstance(command_data, dict)
+            else None
+        )
+        session_id = requested_session_id if isinstance(requested_session_id, str) else ""
+        bound_session_id = self._client_sessions.get(websocket)
+
+        if not session_id:
+            await websocket.send(create_error_message(
+                session_id=bound_session_id or "",
+                error="Missing analysis session ID",
+                command="stop_analysis",
+            ).to_json())
+            return
+
+        if session_id != bound_session_id:
+            logger.warning(
+                "Stop analysis rejected: requested=%s bound=%s client=%s",
+                session_id,
+                bound_session_id,
+                getattr(websocket, "remote_address", None),
+            )
+            await websocket.send(create_error_message(
+                session_id=session_id,
+                error="Analysis session is not bound to this connection",
+                command="stop_analysis",
+            ).to_json())
+            return
+
+        task = self._current_tasks.get(session_id)
+        if not task or task.done():
+            logger.info("No running analysis task for requested session=%s", session_id)
+            await websocket.send(create_error_message(
+                session_id=session_id,
+                error="Analysis session is not running",
+                command="stop_analysis",
+            ).to_json())
             return
 
         logger.info(
@@ -309,6 +352,7 @@ class WebSocketGateway:
         )
         session_sync = self._session_syncs.get(session_id)
         metadata = self._session_metadata.get(session_id)
+        await websocket.send(create_cancellation_requested_message(session_id).to_json())
         task.cancel()
         await asyncio.sleep(0)
         if task.cancelled() and metadata and not metadata["started"]:
@@ -339,6 +383,7 @@ class WebSocketGateway:
             await websocket.send(create_error_message(
                 session_id=session_id,
                 error="Analysis session is not running",
+                command="resume_analysis",
             ).to_json())
             return
 

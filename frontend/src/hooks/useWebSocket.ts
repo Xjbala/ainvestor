@@ -13,7 +13,7 @@ interface UseWebSocketOptions {
 
 interface UseWebSocketReturn {
     isConnected: boolean;
-    send: (data: object) => void;
+    send: (data: object) => boolean;
     connect: () => void;
     disconnect: () => void;
 }
@@ -112,12 +112,14 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         wsRef.current?.close();
     }, []);
 
-    const send = useCallback((data: object) => {
+    const send = useCallback((data: object): boolean => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify(data));
-        } else {
-            console.warn('WebSocket is not connected');
+            return true;
         }
+
+        console.warn('WebSocket is not connected');
+        return false;
     }, []);
 
     useEffect(() => disconnect, [disconnect]);
@@ -142,11 +144,11 @@ export function createStartAnalysisCommand(tickers: string[], date?: string) {
     };
 }
 
-export function createStopAnalysisCommand() {
+export function createStopAnalysisCommand(sessionId: string) {
     return {
         type: 'command',
         event: 'stop_analysis',
-        data: {},
+        data: { session_id: sessionId },
     };
 }
 

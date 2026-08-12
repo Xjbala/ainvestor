@@ -29,9 +29,10 @@ interface AIModeLayoutProps {
     report?: string;
     analysisStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
     onStopAnalysis?: () => void;
+    isStopRequested?: boolean;
 }
 
-export function AIModeLayout({ ticker, agents = [], messages = [], metrics, report, analysisStatus, onStopAnalysis }: AIModeLayoutProps) {
+export function AIModeLayout({ ticker, agents = [], messages = [], metrics, report, analysisStatus, onStopAnalysis, isStopRequested }: AIModeLayoutProps) {
 
     // Selected Agent for Filtering: null = show all
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -457,7 +458,8 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                     });
                 }}
                 onStopAnalysis={onStopAnalysis}
-                />
+                isStopRequested={isStopRequested}
+            />
                 </div>
             </div>
 

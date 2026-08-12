@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { ToastProvider } from './components/Common/Toast';
+import { useToast } from './components/Common/Toast';
 import { useWebSocket } from './hooks/useWebSocket';
 import { createStartAnalysisCommand, createStopAnalysisCommand, createResumeAnalysisCommand } from './hooks/useWebSocket';
 import { useAnalysisStore } from './stores/analysisStore';
@@ -17,6 +17,27 @@ import { extractInvestmentRecommendations } from './utils/metricExtraction';
 // WebSocket服务器地址 - 使用相对路径以适应不同部署环境
 const WS_URL = import.meta.env.VITE_WS_URL || 
   `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8765`;
+const ACTIVE_SESSION_STORAGE_KEY = 'ainvestor.activeAnalysisSessionId';
+
+function getStoredActiveSessionId(): string | null {
+  try {
+    return window.sessionStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeActiveSessionId(sessionId: string | null) {
+  try {
+    if (sessionId) {
+      window.sessionStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, sessionId);
+    } else {
+      window.sessionStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
+    }
+  } catch {
+    // 会话存储不可用时仍保留当前页面内的连接恢复能力。
+  }
+}
 
 function App() {
   // 当前正在分析的股票代码（用于专家模式）
@@ -35,6 +56,7 @@ function App() {
    * We use the mode store to switch between Dashboard, AI, Expert, etc.
    */
   const { mode, setMode } = useModeStore();
+  const toast = useToast();
 
   // 包装的mode切换函数，支持设置ticker
   const handleSwitchMode = (newMode: 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks', ticker?: string) => {
@@ -55,30 +77,60 @@ function App() {
     setMode('expert');
   };
 
-  // Track if we've connected before to detect reconnections
-  const hasConnectedBefore = useRef(false);
-  const activeSessionIdRef = useRef<string | null>(null);
+  // Track the current analysis across WebSocket reconnects and page refreshes.
+  const activeSessionIdRef = useRef<string | null>(getStoredActiveSessionId());
+  const [isStopRequested, setIsStopRequested] = useState(false);
 
   const { connect, send } = useWebSocket({
     url: WS_URL,
     onMessage: (message) => {
       if (message.event === 'session_start') {
         activeSessionIdRef.current = message.session_id || null;
+        storeActiveSessionId(activeSessionIdRef.current);
+        setIsStopRequested(false);
       }
       if (message.event === 'session_end') {
         activeSessionIdRef.current = null;
+        storeActiveSessionId(null);
+        setIsStopRequested(false);
+      }
+      if (message.event === 'cancellation_requested') {
+        setIsStopRequested(true);
+      }
+      if (message.event === 'error') {
+        const error = typeof message.data.error === 'string'
+          ? message.data.error
+          : '分析服务返回未知错误';
+        const details = typeof message.data.details === 'string'
+          ? message.data.details
+          : '';
+        const command = typeof message.data.command === 'string'
+          ? message.data.command
+          : '';
+        toast.error(details ? `${error}: ${details}` : error);
+        setIsStopRequested(false);
+        if (error === 'Analysis session is not running' && message.session_id === activeSessionIdRef.current) {
+          activeSessionIdRef.current = null;
+          storeActiveSessionId(null);
+          dispatch({ type: 'SESSION_END', payload: { success: false, status: 'failed' } });
+        }
+        if (command) {
+          return;
+        }
       }
       handleMessage(message);
     },
     onOpen: () => {
       console.log('Connected to analysis server');
-      if (hasConnectedBefore.current && activeSessionIdRef.current) {
+      if (activeSessionIdRef.current) {
         console.log('[Session Sync] Resuming active analysis session');
         send(createResumeAnalysisCommand(activeSessionIdRef.current));
       }
-      hasConnectedBefore.current = true;
     },
-    onClose: () => console.log('Disconnected from analysis server'),
+    onClose: () => {
+      console.log('Disconnected from analysis server');
+      setIsStopRequested(false);
+    },
   });
 
   // WebSocket connection effect
@@ -88,7 +140,19 @@ function App() {
 
   // Stop analysis handler
   const handleStopAnalysis = () => {
-    send(createStopAnalysisCommand());
+    const sessionId = activeSessionIdRef.current;
+    if (!sessionId) {
+      toast.error('没有可停止的分析会话，请刷新后重试');
+      return;
+    }
+    if (isStopRequested) {
+      return;
+    }
+    if (!send(createStopAnalysisCommand(sessionId))) {
+      toast.error('分析服务未连接，无法停止会话');
+      return;
+    }
+    setIsStopRequested(true);
   };
 
   // 历史会话仅在工作台和报告页按需加载，避免覆盖实时协作状态。
@@ -154,7 +218,6 @@ function App() {
   // ========================================
 
   return (
-    <ToastProvider>
     <div className="flex bg-background text-foreground font-sans min-h-screen">
       {/* Global Sidebar (Left Navigation) */}
       <Sidebar activeMode={mode} onSwitchMode={setMode} />
@@ -177,6 +240,7 @@ function App() {
             report={state.report}
             analysisStatus={state.status}
             onStopAnalysis={handleStopAnalysis}
+            isStopRequested={isStopRequested}
           />
         )}
 
@@ -217,7 +281,6 @@ function App() {
 
       </main>
     </div>
-    </ToastProvider>
   );
 }
 

@@ -98,7 +98,14 @@ class TestWebSocketGatewaySessions(unittest.TestCase):
 
         await gateway._handle_start_analysis(client, request)
         session_id = gateway._client_sessions[client]
-        await gateway._handle_stop_analysis(client, {"type": "command", "event": "stop_analysis"})
+        await gateway._handle_stop_analysis(
+            client,
+            {
+                "type": "command",
+                "event": "stop_analysis",
+                "data": {"session_id": session_id},
+            },
+        )
 
         self.assertFalse(handler_started.is_set())
         self.assertNotIn(session_id, gateway._current_tasks)
@@ -136,7 +143,14 @@ class TestWebSocketGatewaySessions(unittest.TestCase):
         await started.wait()
         session_id = gateway._client_sessions[client]
 
-        await gateway._handle_stop_analysis(client, {"type": "command", "event": "stop_analysis"})
+        await gateway._handle_stop_analysis(
+            client,
+            {
+                "type": "command",
+                "event": "stop_analysis",
+                "data": {"session_id": session_id},
+            },
+        )
 
         self.assertTrue(cancelled.is_set())
         self.assertNotIn(session_id, gateway._current_tasks)
@@ -202,6 +216,146 @@ class TestWebSocketGatewaySessions(unittest.TestCase):
         release.set()
         await asyncio.gather(*gateway._current_tasks.values())
         self.assertFalse(cancelled.is_set())
+
+    def test_resumed_client_can_stop_its_bound_session(self):
+        asyncio.run(self._test_resumed_client_can_stop_its_bound_session())
+
+    async def _test_resumed_client_can_stop_its_bound_session(self):
+        gateway = WebSocketGateway()
+        started = asyncio.Event()
+        cancelled = asyncio.Event()
+
+        async def blocking_handler(tickers, date, session_id, session_sync):
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+        gateway.set_analysis_handler(blocking_handler)
+        original_client = FakeWebSocket()
+        replacement_client = FakeWebSocket()
+        request = {
+            "type": "command",
+            "event": "start_analysis",
+            "data": {"tickers": ["603137"], "date": "2026-08-11"},
+        }
+
+        await gateway._handle_start_analysis(original_client, request)
+        await started.wait()
+        session_id = gateway._client_sessions[original_client]
+        session_sync = gateway._session_syncs[session_id]
+
+        await session_sync.unregister(original_client)
+        gateway._client_sessions.pop(original_client)
+        await gateway._handle_resume_analysis(
+            replacement_client,
+            {
+                "type": "command",
+                "event": "resume_analysis",
+                "data": {"session_id": session_id},
+            },
+        )
+        await gateway._handle_stop_analysis(
+            replacement_client,
+            {
+                "type": "command",
+                "event": "stop_analysis",
+                "data": {"session_id": session_id},
+            },
+        )
+
+        self.assertTrue(cancelled.is_set())
+        self.assertNotIn(session_id, gateway._current_tasks)
+        self.assertEqual("cancellation_requested", replacement_client.sent[-2]["event"])
+        self.assertEqual("cancelled", replacement_client.sent[-1]["data"]["status"])
+
+    def test_stop_rejects_a_session_bound_to_another_client(self):
+        asyncio.run(self._test_stop_rejects_a_session_bound_to_another_client())
+
+    async def _test_stop_rejects_a_session_bound_to_another_client(self):
+        gateway = WebSocketGateway()
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        async def blocking_handler(tickers, date, session_id, session_sync):
+            started.set()
+            await release.wait()
+
+        gateway.set_analysis_handler(blocking_handler)
+        first_client = FakeWebSocket()
+        second_client = FakeWebSocket()
+        request = {
+            "type": "command",
+            "event": "start_analysis",
+            "data": {"tickers": ["603137"], "date": "2026-08-11"},
+        }
+
+        await gateway._handle_start_analysis(first_client, request)
+        await gateway._handle_start_analysis(second_client, request)
+        await started.wait()
+        first_session_id = gateway._client_sessions[first_client]
+        second_session_id = gateway._client_sessions[second_client]
+
+        await gateway._handle_stop_analysis(
+            first_client,
+            {
+                "type": "command",
+                "event": "stop_analysis",
+                "data": {"session_id": second_session_id},
+            },
+        )
+
+        self.assertFalse(gateway._current_tasks[first_session_id].done())
+        self.assertFalse(gateway._current_tasks[second_session_id].done())
+        self.assertEqual("error", first_client.sent[-1]["event"])
+        self.assertEqual(
+            "Analysis session is not bound to this connection",
+            first_client.sent[-1]["data"]["error"],
+        )
+        self.assertEqual("stop_analysis", first_client.sent[-1]["data"]["command"])
+
+        release.set()
+        await asyncio.gather(*gateway._current_tasks.values())
+
+    def test_gateway_stop_cancels_active_analysis_tasks(self):
+        asyncio.run(self._test_gateway_stop_cancels_active_analysis_tasks())
+
+    async def _test_gateway_stop_cancels_active_analysis_tasks(self):
+        gateway = WebSocketGateway()
+        started = asyncio.Event()
+        cancelled = asyncio.Event()
+
+        async def blocking_handler(tickers, date, session_id, session_sync):
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+        gateway.set_analysis_handler(blocking_handler)
+        client = FakeWebSocket()
+        request = {
+            "type": "command",
+            "event": "start_analysis",
+            "data": {"tickers": ["603137"], "date": "2026-08-11"},
+        }
+
+        await gateway._handle_start_analysis(client, request)
+        await started.wait()
+        session_id = gateway._client_sessions[client]
+
+        await gateway.stop()
+
+        self.assertTrue(cancelled.is_set())
+        self.assertNotIn(session_id, gateway._current_tasks)
+        terminal_events = [
+            message for message in client.sent if message["event"] == "session_end"
+        ]
+        self.assertEqual(1, len(terminal_events))
+        self.assertEqual("cancelled", terminal_events[0]["data"]["status"])
 
     def test_missing_handler_cleans_session_registrations(self):
         asyncio.run(self._test_missing_handler_cleans_session_registrations())
