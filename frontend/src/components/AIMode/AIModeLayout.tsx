@@ -248,7 +248,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
         <div className="ai-mode-container">
             <StockHeader
                 ticker={ticker}
-                lastUpdated={new Date().toLocaleTimeString()} // Use current time as update time for now
+                lastUpdated={formatTimeShort(new Date().toISOString())}
             />
 
             <div className="ai-mode-content">
