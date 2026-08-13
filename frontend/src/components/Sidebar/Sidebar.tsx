@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Zap, Terminal, FileText, Settings, Database, Building2, Table2 } from 'lucide-react';
+import { LayoutDashboard, Zap, Terminal, FileText, Settings, Database, Building2, Table2, Activity } from 'lucide-react';
 
 export type AppMode = 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks';
 
@@ -32,6 +32,7 @@ const NAV_ITEMS: NavItem[] = [
  */
 export const Sidebar: React.FC<SidebarProps> = ({ activeMode, onSwitchMode }) => {
     const [hoveredId, setHoveredId] = useState<string | null>(null);
+    const studioUrl = import.meta.env.VITE_AGENTSCOPE_STUDIO_URL?.trim();
 
     const activeItem = NAV_ITEMS.find(n => n.id === activeMode);
 
@@ -81,6 +82,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeMode, onSwitchMode }) =>
                         </div>
                     );
                 })}
+
+                {studioUrl && (
+                    <div
+                        className="relative"
+                        onMouseEnter={() => setHoveredId('agent-studio')}
+                        onMouseLeave={() => setHoveredId(null)}
+                    >
+                        <a
+                            href={studioUrl}
+                            aria-label="Agent 追踪"
+                            className="w-full h-12 rounded-vibe-sm flex items-center justify-center text-[var(--muted-foreground)] hover:bg-accent hover:text-[var(--sidebar-foreground)] transition-colors"
+                        >
+                            <Activity className="w-5 h-5" />
+                        </a>
+
+                        {hoveredId === 'agent-studio' && (
+                            <div className="absolute left-full top-0 ml-2 bg-secondary text-secondary-foreground rounded-vibe-sm px-4 py-3 shadow-rams whitespace-nowrap z-50 animate-fade-in">
+                                <div className="text-sm font-semibold">Agent 追踪</div>
+                                <div className="text-xs text-white/60 mt-0.5">查看 AgentScope Studio 运行轨迹</div>
+                                <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-secondary" />
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* 设置 */}

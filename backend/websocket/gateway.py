@@ -95,8 +95,8 @@ class WebSocketGateway:
         """
         self._analysis_handler = handler
     
-    async def start(self):
-        """启动WebSocket服务器"""
+    async def bind(self):
+        """Bind the WebSocket listener without blocking on its shutdown."""
         self._running = True
         self._server = await serve(
             self._handle_connection,
@@ -104,8 +104,14 @@ class WebSocketGateway:
             self.port,
         )
         logger.info(f"WebSocket server started on ws://{self.host}:{self.port}")
-        
-        # 保持服务器运行
+
+    async def start(self):
+        """启动WebSocket服务器并保持运行。"""
+        await self.bind()
+        await self.wait_closed()
+
+    async def wait_closed(self):
+        """Wait until the bound WebSocket server stops."""
         await self._server.wait_closed()
     
     async def stop(self):

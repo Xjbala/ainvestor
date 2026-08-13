@@ -23,6 +23,7 @@ import os
 import argparse
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 from dotenv import load_dotenv
 
 from backend.agents import AnalystAgent, RiskAgent, PMAgent
@@ -30,6 +31,7 @@ from backend.config.constants import ANALYST_TYPES
 from backend.config.env_config import get_env_float, get_env_int, get_env_list
 from backend.core.pipeline import RatingPipeline
 from backend.llm.models import get_agent_formatter, get_agent_model
+from backend.observability.studio import initialize as initialize_studio
 
 
 load_dotenv()
@@ -237,6 +239,10 @@ async def run_rating_cycle(
     Returns:
         评级结果
     """
+    session_id = str(uuid4())
+    await initialize_studio(session_id)
+    pipeline._session_id = session_id
+
     result = await pipeline.run_cycle(
         tickers=tickers,
         date=date,

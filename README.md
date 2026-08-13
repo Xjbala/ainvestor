@@ -273,6 +273,49 @@ uv run python main.py --tickers 600519,000858 --date 2026-01-28
 uv run python main.py --tickers 600519 --enable-memory
 ```
 
+### 可选：集成 AgentScope Studio 追踪
+
+AgentScope Studio 用于查看每次分析的 Agent 调用轨迹。它是一个独立服务，默认不启动、不导出追踪，也不会在前端显示入口。启用后仍通过主站同域名访问，例如 `https://your-domain.example/agent-studio/`，而不是新增子域名。
+
+> Studio 会保存提示词、模型回复、工具入参/结果及相关上下文。它没有内置的生产级鉴权，必须在 Nginx、VPN、SSO 或 IP 白名单层保护 `/agent-studio/`，不要公开暴露。
+
+1. 启动独立的 Studio 服务。Compose 仅将端口暴露给本机，数据保存在 Docker named volume：
+
+```bash
+docker compose -f deploy/agentscope-studio/docker-compose.yml up -d
+```
+
+2. 在运行 Python 后端的 `.env` 中启用导出。`AGENTSCOPE_STUDIO_ENDPOINT` 是后端可达的内部地址，不是浏览器 URL；后端与 Compose 服务位于同一主机时使用 `http://127.0.0.1:3000`：
+
+```env
+AGENTSCOPE_STUDIO_ENABLED=true
+AGENTSCOPE_STUDIO_ENDPOINT=http://127.0.0.1:3000
+AGENTSCOPE_STUDIO_PROJECT=AI Investor
+```
+
+3. 在构建前端的 `frontend/.env.production` 中启用侧边栏入口。此变量是浏览器 URL，应使用同域路径：
+
+```env
+VITE_AGENTSCOPE_STUDIO_URL=/agent-studio/
+```
+
+4. 创建 Studio 访问凭据，再将 [`deploy/agentscope-studio/nginx.conf`](deploy/agentscope-studio/nginx.conf) 的 location 块加入现有 HTTPS 虚拟主机。模板会同时保护页面、tRPC API 与实时连接；若改用 VPN、SSO 或 IP 白名单，必须在这三个 location 上同时生效。完整说明见 [`docs/production-websocket-proxy.md`](docs/production-websocket-proxy.md)。
+
+```bash
+sudo htpasswd -c /etc/nginx/.htpasswd-agent-studio <studio-user>
+sudo nginx -t
+sudo systemctl reload nginx
+cd frontend && npm run build
+```
+
+该 Nginx 模板固定适配 `@agentscope/studio@1.0.9`。该版本的前端假设它部署在域名根路径，模板通过 `sub_filter` 将资源、tRPC、Socket.IO 和浏览器路由改写到 `/agent-studio/`。升级 Studio 前必须重新验证该模板，并确认 Nginx 包含 `ngx_http_sub_module`：
+
+```bash
+nginx -V 2>&1 | grep -- --with-http_sub_module
+```
+
+Studio 不可用时，AI 分析会继续执行，仅在后端日志中记录追踪初始化失败。当前实现仅导出 trace，不安装 AgentScope 的全局 Studio hooks，因此 Studio 中的运行记录会直接显示为已完成；请以 trace 内容定位单次分析过程。当前 WebSocket 状态保存在后端进程内，生产环境请保持单 worker（不要为该服务配置多个 Gunicorn worker）。
+
 ## 📐 估值模型
 
 系统提供 6 种估值方法，支持按行业画像加权融合：

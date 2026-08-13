@@ -63,10 +63,10 @@ class TestRunAnalysisCancellation(unittest.TestCase):
             database.update_session_status.await_args_list,
         )
 
-    def test_console_output_is_disabled_before_agent_construction(self):
-        asyncio.run(self._test_console_output_is_disabled_before_agent_construction())
+    def test_console_output_is_enabled_before_agent_construction(self):
+        asyncio.run(self._test_console_output_is_enabled_before_agent_construction())
 
-    async def _test_console_output_is_disabled_before_agent_construction(self):
+    async def _test_console_output_is_enabled_before_agent_construction(self):
         database = MagicMock()
         database.create_session = AsyncMock(
             return_value=SimpleNamespace(id="session-completed"),
@@ -91,6 +91,7 @@ class TestRunAnalysisCancellation(unittest.TestCase):
 
         with (
             patch("backend.server.get_database", new_callable=AsyncMock, return_value=database),
+            patch("backend.server.initialize_studio", new_callable=AsyncMock) as initialize_studio,
             patch("backend.agents.AnalystAgent", RecordingAgent),
             patch("backend.agents.RiskAgent", RecordingAgent),
             patch("backend.agents.PMAgent", RecordingAgent),
@@ -105,9 +106,10 @@ class TestRunAnalysisCancellation(unittest.TestCase):
                 date="2026-08-11",
                 session_id="session-completed",
                 session_sync=FakeSessionSync(),
-            )
+        )
 
-        self.assertTrue(all(agent.console_output_disabled for agent in created_agents))
+        initialize_studio.assert_called_once_with("session-completed")
+        self.assertTrue(all(not agent.console_output_disabled for agent in created_agents))
 
 
 if __name__ == "__main__":

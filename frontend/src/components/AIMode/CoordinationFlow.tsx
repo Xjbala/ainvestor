@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import {
     extractInvestmentRecommendations,
     type InvestmentRecommendation,
+} from '../../utils/metricExtraction';
 import { stripThinkingContent } from '../../utils/reportUtils';
 import { formatTimeShort } from '../../utils/timeFormat';
 import './AIMode.css';
@@ -15,9 +16,11 @@ export interface AgentMessage {
     content: string;
     timestamp: string;
     type: 'info' | 'warning' | 'success' | 'alert';
+}
 
 interface CoordinationFlowProps {
     messages: AgentMessage[];
+}
 
 const MAX_COLLAPSED_LINES = 12;
 
@@ -35,11 +38,13 @@ function formatTargetPrice(recommendation: InvestmentRecommendation): string {
     }
 
     return '—';
+}
 
 function getRatingClass(rating?: string): string {
     if (/强烈推荐|推荐/.test(rating || '')) return 'is-bullish';
     if (/谨慎|回避/.test(rating || '')) return 'is-bearish';
     return 'is-neutral';
+}
 
 function InvestmentDecisionSummary({ recommendations }: { recommendations: InvestmentRecommendation[] }) {
     return (
@@ -84,6 +89,7 @@ function InvestmentDecisionSummary({ recommendations }: { recommendations: Inves
             ))}
         </section>
     );
+}
 
 export function CoordinationFlow({ messages }: CoordinationFlowProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -198,3 +204,4 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
             </div>
         </div>
     );
+}

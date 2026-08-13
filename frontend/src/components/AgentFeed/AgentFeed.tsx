@@ -24,11 +24,9 @@ import './AgentFeed.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ConferenceMessage } from '../../types/message';
-import { stripThinkingContent } from '../../utils/reportUtils';
 import Card from '../Common/Card';
 import Badge from '../Common/Badge';
 import Button from '../Common/Button';
-import './AgentFeed.css';
 
 interface AgentFeedProps {
     messages: ConferenceMessage[];

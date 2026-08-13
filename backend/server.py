@@ -32,11 +32,20 @@ from backend.api.companies import router as companies_router
 from backend.api.exchanges import router as exchanges_router
 from backend.api.segments import router as segments_router
 from backend.persistence.compat import get_database, close_database
+from backend.observability.studio import initialize as initialize_studio
 from backend.websocket.gateway import WebSocketGateway
 from backend.websocket.state_sync import WebSocketStateSync
 from backend.agents.tool_progress import with_tool_progress
 
 load_dotenv()
+
+# 日志配置
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger(__name__)
+
 # AgentScope prints thinking and tool content blocks to stdout by default.
 # Enable console output so server logs show agent execution details.
 os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "false"
@@ -53,18 +62,15 @@ if os.environ.get("AGENTSCOPE_DISABLE_CONSOLE_OUTPUT", "false") == "false":
                 self.logger.log(self.level, message.rstrip())
         def flush(self):
             pass
+
+        def isatty(self):
+            return False
     sys.stdout = StreamToLogger(logger, logging.INFO)
     sys.stderr = StreamToLogger(logger, logging.ERROR)
 
-# 日志配置
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
-logger = logging.getLogger(__name__)
-
 # 全局变量
 ws_gateway: WebSocketGateway = None
+ws_gateway_task: asyncio.Task | None = None
 
 
 def _create_analyst_toolkit(
@@ -159,6 +165,7 @@ async def run_analysis(
         # 创建会话记录 (使用网关传入的session_id以确保一致性)
         session = await db.create_session(tickers=tickers, date=date, session_id=session_id)
         await db.update_session_status(session.id, "running")
+        await initialize_studio(session.id)
 
         # 创建分析师
         analysts = []
@@ -257,7 +264,7 @@ async def run_analysis(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
-    global ws_gateway
+    global ws_gateway, ws_gateway_task
     
     # 启动时
     logger.info("Starting AI Investor backend...")
@@ -272,9 +279,9 @@ async def lifespan(app: FastAPI):
     )
     ws_gateway.set_analysis_handler(run_analysis)
     
-    # 在后台启动WebSocket服务器
-    asyncio.create_task(ws_gateway.start())
-    logger.info("WebSocket gateway started")
+    # Bind before reporting application startup so port conflicts fail clearly.
+    await ws_gateway.bind()
+    ws_gateway_task = asyncio.create_task(ws_gateway.wait_closed())
     
     yield
     
@@ -282,6 +289,9 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down AI Investor backend...")
     if ws_gateway:
         await ws_gateway.stop()
+    if ws_gateway_task:
+        await ws_gateway_task
+        ws_gateway_task = None
     await close_database()
 
 

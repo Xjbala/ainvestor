@@ -63,7 +63,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agentscope", specifier = ">=1.0.13" },
+    { name = "agentscope", specifier = ">=1.0.13,<2" },
     { name = "aiomysql", specifier = ">=0.2.0" },
     { name = "aiosqlite", specifier = ">=0.20.0" },
     { name = "beautifulsoup4", specifier = ">=4.14.3" },
