@@ -41,6 +41,21 @@ load_dotenv()
 # Enable console output so server logs show agent execution details.
 os.environ["AGENTSCOPE_DISABLE_CONSOLE_OUTPUT"] = "false"
 
+# Redirect stdout to logging to capture AgentScope's print() output
+import sys
+if os.environ.get("AGENTSCOPE_DISABLE_CONSOLE_OUTPUT", "false") == "false":
+    class StreamToLogger:
+        def __init__(self, logger, level):
+            self.logger = logger
+            self.level = level
+        def write(self, message):
+            if message.strip():
+                self.logger.log(self.level, message.rstrip())
+        def flush(self):
+            pass
+    sys.stdout = StreamToLogger(logger, logging.INFO)
+    sys.stderr = StreamToLogger(logger, logging.ERROR)
+
 # 日志配置
 logging.basicConfig(
     level=logging.INFO,
