@@ -23,6 +23,15 @@ interface CoordinationFlowProps {
 
 const MAX_COLLAPSED_LINES = 12;
 
+function formatTimestamp(timestamp: string): string {
+    try {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return timestamp;
+    }
+}
+
 function formatTargetPrice(recommendation: InvestmentRecommendation): string {
     const targetPrice = recommendation.target_price;
     if (targetPrice !== null && targetPrice !== undefined && targetPrice !== '') {
@@ -176,7 +185,7 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
                                         </span>
                                         <span className="agent-name">{msg.agentName}</span>
                                     </div>
-                                    <span className="time-stamp">{msg.timestamp}</span>
+                                    <span className="time-stamp">{formatTimestamp(msg.timestamp)}</span>
                                 </div>
                                 {recommendations ? (
                                     <InvestmentDecisionSummary recommendations={recommendations} />
