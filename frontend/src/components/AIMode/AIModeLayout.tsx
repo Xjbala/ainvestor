@@ -15,6 +15,7 @@ import {
 } from '../../utils/metricExtraction';
 import { companyApi } from '../../services/companyApi';
 import { exportReport } from '../../utils/reportExport';
+import { formatTimeShort } from '../../utils/timeFormat';
 
 // Use this interface to accept props from App.tsx
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
