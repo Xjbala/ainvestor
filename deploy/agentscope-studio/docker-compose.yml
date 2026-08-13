@@ -1,0 +1,19 @@
+services:
+  agentscope-studio:
+    image: node:24-alpine
+    container_name: ainvestor-agentscope-studio
+    restart: unless-stopped
+    working_dir: /app
+    environment:
+      HOME: /app/data
+      NODE_ENV: production
+      PORT: "3000"
+      OTEL_GRPC_PORT: "4317"
+    command: ["npx", "--yes", "@agentscope/studio@1.0.9"]
+    volumes:
+      - agentscope-studio-data:/app/data
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  agentscope-studio-data:
