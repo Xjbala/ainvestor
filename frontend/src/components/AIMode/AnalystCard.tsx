@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { formatTimeShort } from '../../utils/timeFormat';
 import './AIMode.css';
 
 export interface AnalystCardProps {
@@ -68,7 +69,7 @@ export function AnalystCard({
             <div className="card-logs">
                 {logs.slice(-3).map((log, index) => (
                     <div key={index} className="log-item">
-                        <span className="log-time">[{new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' })}]</span>
+                        <span className="log-time">[{formatTimeShort(new Date().toISOString())}]</span>
                         <span className={`log-text ${log.includes('警告') || log.includes('风险') ? 'highlight' : ''}`}>{log}</span>
                     </div>
                 ))}

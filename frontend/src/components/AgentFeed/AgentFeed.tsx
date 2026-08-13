@@ -18,6 +18,9 @@ import {
     ChevronDown
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { stripThinkingContent } from '../../utils/reportUtils';
+import { formatTime } from '../../utils/timeFormat';
+import './AgentFeed.css';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ConferenceMessage } from '../../types/message';
@@ -161,11 +164,4 @@ function getAgentName(agentId: string): string {
 
 function getPhaseLabel(phase: string): string {
     return phase === 'analysis' ? '核心分析' : '委员会讨论';
-}
-
-function formatTime(timestamp: string): string {
-    try {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch { return '--:--:--'; }
 }

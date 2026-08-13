@@ -4,8 +4,8 @@ import remarkGfm from 'remark-gfm';
 import {
     extractInvestmentRecommendations,
     type InvestmentRecommendation,
-} from '../../utils/metricExtraction';
 import { stripThinkingContent } from '../../utils/reportUtils';
+import { formatTimeShort } from '../../utils/timeFormat';
 import './AIMode.css';
 
 export interface AgentMessage {
@@ -15,22 +15,11 @@ export interface AgentMessage {
     content: string;
     timestamp: string;
     type: 'info' | 'warning' | 'success' | 'alert';
-}
 
 interface CoordinationFlowProps {
     messages: AgentMessage[];
-}
 
 const MAX_COLLAPSED_LINES = 12;
-
-function formatTimestamp(timestamp: string): string {
-    try {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    } catch {
-        return timestamp;
-    }
-}
 
 function formatTargetPrice(recommendation: InvestmentRecommendation): string {
     const targetPrice = recommendation.target_price;
@@ -46,13 +35,11 @@ function formatTargetPrice(recommendation: InvestmentRecommendation): string {
     }
 
     return '—';
-}
 
 function getRatingClass(rating?: string): string {
     if (/强烈推荐|推荐/.test(rating || '')) return 'is-bullish';
     if (/谨慎|回避/.test(rating || '')) return 'is-bearish';
     return 'is-neutral';
-}
 
 function InvestmentDecisionSummary({ recommendations }: { recommendations: InvestmentRecommendation[] }) {
     return (
@@ -97,7 +84,6 @@ function InvestmentDecisionSummary({ recommendations }: { recommendations: Inves
             ))}
         </section>
     );
-}
 
 export function CoordinationFlow({ messages }: CoordinationFlowProps) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -185,7 +171,7 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
                                         </span>
                                         <span className="agent-name">{msg.agentName}</span>
                                     </div>
-                                    <span className="time-stamp">{formatTimestamp(msg.timestamp)}</span>
+                                    <span className="time-stamp">{formatTimeShort(msg.timestamp)}</span>
                                 </div>
                                 {recommendations ? (
                                     <InvestmentDecisionSummary recommendations={recommendations} />
@@ -212,4 +198,3 @@ export function CoordinationFlow({ messages }: CoordinationFlowProps) {
             </div>
         </div>
     );
-}
