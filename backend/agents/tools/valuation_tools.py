@@ -13,6 +13,7 @@ from agentscope.message import TextBlock
 from agentscope.tool import ToolResponse
 
 from backend.persistence.db import async_session_factory
+from backend.agents.tools.stock_code import normalize_stock_code
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ async def dcf_valuation_analysis(
     from backend.valuation.dcf import DCFValuationService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = DCFValuationService(session)
             params = {
@@ -98,6 +100,7 @@ async def residual_income_valuation_analysis(
     from backend.valuation.wacc import WACCService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             params = {
                 "growth_rate": growth_rate,
@@ -133,6 +136,7 @@ async def relative_valuation_analysis(
     from backend.valuation.relative import RelativeValuationService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = RelativeValuationService(session)
             result = await service.valuate(stock_code)
@@ -158,6 +162,7 @@ async def get_wacc_breakdown(
     from backend.valuation.wacc import WACCService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             result = await WACCService(session).calculate(stock_code)
             return _ok(result)
@@ -183,6 +188,7 @@ async def comprehensive_valuation_analysis(
     from backend.valuation.triangulate import TriangulationService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             result = await TriangulationService(session).valuate(stock_code)
             return _ok(result)
@@ -206,6 +212,7 @@ async def sotp_valuation_analysis(
     from backend.valuation.sotp import SOTPValuationService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             result = await SOTPValuationService(session).valuate(stock_code)
             return _ok(result)

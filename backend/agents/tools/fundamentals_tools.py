@@ -14,6 +14,7 @@ from agentscope.tool import ToolResponse
 from agentscope.message import TextBlock
 
 from backend.persistence.db import async_session_factory
+from backend.agents.tools.stock_code import normalize_stock_code
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ async def analyze_profitability(
     from backend.analysis.profitability import ProfitabilityAnalysisService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = ProfitabilityAnalysisService(session)
             result = await service.analyze(stock_code=stock_code, years=years)
@@ -81,6 +83,7 @@ async def analyze_growth(
     from backend.analysis.growth import GrowthAnalysisService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = GrowthAnalysisService(session)
             result = await service.analyze(stock_code=stock_code, years=years)
@@ -118,6 +121,7 @@ async def analyze_solvency(
     from backend.analysis.solvency import SolvencyAnalysisService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = SolvencyAnalysisService(session)
             result = await service.analyze(stock_code=stock_code, years=years)
@@ -155,6 +159,7 @@ async def analyze_operating(
     from backend.analysis.operating import OperatingAnalysisService
 
     try:
+        stock_code = normalize_stock_code(stock_code)
         async with async_session_factory() as session:
             service = OperatingAnalysisService(session)
             result = await service.analyze(stock_code=stock_code, years=years)
