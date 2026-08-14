@@ -3,12 +3,20 @@
 import json
 from contextlib import ExitStack
 from datetime import date
+from decimal import Decimal
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+from sqlalchemy.dialects import mysql
 
 from backend.agents.tools import fundamentals_tools, valuation_tools
 from backend.agents.tools.stock_code import normalize_stock_code
+from backend.valuation.dcf import DCFValuationService
 from backend.valuation.query_helpers import calendar_year_bounds
+from backend.valuation.relative import RelativeValuationService
+from backend.valuation.residual_income import ResidualIncomeService
+from backend.valuation.wacc import WACCService
+from backend.persistence.financial_models import ReportType
 
 
 class TestNormalizeStockCode(unittest.TestCase):
@@ -51,6 +59,93 @@ class _FakeAsyncSessionContext:
 
     async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None:
         return None
+
+
+class _ScalarResult:
+    def __init__(self, value: object) -> None:
+        self._value = value
+
+    def scalar(self) -> object:
+        return self._value
+
+
+class _CapturingAsyncSession:
+    def __init__(self, values: list[object]) -> None:
+        self.statements: list[object] = []
+        self._values = iter(values)
+
+    async def execute(self, statement: object) -> _ScalarResult:
+        self.statements.append(statement)
+        return _ScalarResult(next(self._values, Decimal("1")))
+
+
+class TestValuationYearQueryPredicates(unittest.IsolatedAsyncioTestCase):
+    def _assert_year_bounds(self, statements: list[object]) -> None:
+        for statement in statements:
+            with self.subTest(statement=statement):
+                sql = str(
+                    statement.compile(
+                        dialect=mysql.dialect(),
+                        compile_kwargs={"literal_binds": True},
+                    ),
+                )
+                self.assertIn(
+                    "financial_data.report_date >=",
+                    sql,
+                )
+                self.assertIn("financial_data.report_date <", sql)
+                self.assertNotIn("EXTRACT", sql)
+
+    async def test_wacc_subject_lookup_uses_calendar_year_bounds(self) -> None:
+        session = _CapturingAsyncSession([Decimal("1")])
+
+        await WACCService(session)._sum_subjects(
+            "603137",
+            ["BSL102"],
+            2025,
+            ReportType.BS,
+        )
+
+        self.assertEqual(len(session.statements), 1)
+        self._assert_year_bounds(session.statements)
+
+    async def test_dcf_balance_sheet_lookup_uses_calendar_year_bounds(self) -> None:
+        session = _CapturingAsyncSession([Decimal("1")])
+
+        await DCFValuationService(session)._get_balance_sheet_value(
+            "603137",
+            "BSL102",
+            2025,
+        )
+
+        self.assertEqual(len(session.statements), 1)
+        self._assert_year_bounds(session.statements)
+
+    async def test_dcf_base_financials_lookup_uses_calendar_year_bounds(self) -> None:
+        session = _CapturingAsyncSession([])
+        service = DCFValuationService(session)
+        service._get_balance_sheet_changes = AsyncMock(return_value={})
+
+        await service._get_base_financials("603137", 2025)
+
+        self.assertGreater(len(session.statements), 0)
+        self._assert_year_bounds(session.statements)
+
+    async def test_residual_income_base_financials_lookup_uses_calendar_year_bounds(self) -> None:
+        session = _CapturingAsyncSession([])
+
+        await ResidualIncomeService(session)._get_base_financials("603137", 2025)
+
+        self.assertGreater(len(session.statements), 0)
+        self._assert_year_bounds(session.statements)
+
+    async def test_relative_financials_lookup_uses_calendar_year_bounds(self) -> None:
+        session = _CapturingAsyncSession([date(2025, 12, 31)])
+
+        await RelativeValuationService(session)._get_financials("603137")
+
+        self.assertGreater(len(session.statements), 1)
+        self._assert_year_bounds(session.statements[1:])
 
 
 class TestFinancialToolStockCodeBoundaries(unittest.IsolatedAsyncioTestCase):

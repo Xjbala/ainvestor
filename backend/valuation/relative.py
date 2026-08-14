@@ -11,12 +11,13 @@ import logging
 from statistics import median
 from typing import Any, Dict, List, Optional, Sequence
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..persistence.financial_models import Company, CompanyStatus, FinancialData, ReportType
 from .industry_profiles import get_industry_profile
+from .query_helpers import calendar_year_bounds
 from .scenarios import build_bull_base_bear_prices, rating_from_upside
 
 logger = logging.getLogger(__name__)
@@ -248,6 +249,7 @@ class RelativeValuationService:
         year = await self._latest_year(stock_code)
         if not year:
             return None
+        year_start, next_year_start = calendar_year_bounds(year)
         data: Dict[str, float] = {}
         for field, (codes, rtype) in self.SUBJECT.items():
             val = 0.0
@@ -257,7 +259,8 @@ class RelativeValuationService:
                     .where(
                         FinancialData.company_code == stock_code,
                         FinancialData.subject_code == code,
-                        func.extract("year", FinancialData.report_date) == year,
+                        FinancialData.report_date >= year_start,
+                        FinancialData.report_date < next_year_start,
                         FinancialData.report_type == rtype,
                     )
                     .order_by(FinancialData.report_date.desc())

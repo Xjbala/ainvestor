@@ -20,10 +20,11 @@ from typing import Any, Dict, List, Optional
 import logging
 from datetime import date
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..persistence.financial_models import Company, FinancialData, ReportType, ReportPeriod
+from .query_helpers import calendar_year_bounds
 
 logger = logging.getLogger(__name__)
 
@@ -609,6 +610,7 @@ class ResidualIncomeService:
     ) -> Optional[Dict[str, Decimal]]:
         """获取基准财务数据"""
         try:
+            year_start, next_year_start = calendar_year_bounds(base_year)
             financial_data = {}
 
             # 获取所有需要的财务数据
@@ -629,7 +631,8 @@ class ResidualIncomeService:
                         conditions = [
                             FinancialData.company_code == stock_code,
                             FinancialData.subject_code == code,
-                            func.extract('year', FinancialData.report_date) == base_year,
+                            FinancialData.report_date >= year_start,
+                            FinancialData.report_date < next_year_start,
                             FinancialData.report_type == report_type,
                         ]
                         if prefer_annual:

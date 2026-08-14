@@ -13,12 +13,13 @@ import os
 from decimal import Decimal
 from typing import Any, Dict, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from ..persistence.financial_models import Company, FinancialData, ReportType
 from .industry_profiles import get_industry_profile
+from .query_helpers import calendar_year_bounds
 
 logger = logging.getLogger(__name__)
 
@@ -208,6 +209,7 @@ class WACCService:
         year: int,
         report_type: ReportType,
     ) -> float:
+        year_start, next_year_start = calendar_year_bounds(year)
         total = 0.0
         for code in codes:
             stmt = (
@@ -215,7 +217,8 @@ class WACCService:
                 .where(
                     FinancialData.company_code == stock_code,
                     FinancialData.subject_code == code,
-                    func.extract("year", FinancialData.report_date) == year,
+                    FinancialData.report_date >= year_start,
+                    FinancialData.report_date < next_year_start,
                     FinancialData.report_type == report_type,
                 )
                 .order_by(FinancialData.report_date.desc())
