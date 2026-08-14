@@ -12,6 +12,7 @@ import os
 import re
 import asyncio
 import random
+from time import perf_counter
 from typing import Any, Dict, List, Optional, Callable, Awaitable
 
 from agentscope.message import Msg
@@ -21,6 +22,7 @@ from ..persistence.compat import get_database
 from ..agents.tool_progress import tool_progress_scope
 
 logger = logging.getLogger(__name__)
+timing_logger = logging.getLogger("analysis_timing")
 
 
 def _log(msg: str):
@@ -164,6 +166,48 @@ class RatingPipeline:
         self.conference_summary = None
         self._session_id: Optional[str] = None
 
+    def _timing_session_id(self) -> str:
+        """Return the current session ID without requiring a live WebSocket sync."""
+        session_id = self._session_id or getattr(self.state_sync, "_session_id", None)
+        return str(session_id or "unknown")
+
+    async def _run_timed_phase(
+        self,
+        phase: str,
+        operation: Callable[..., Awaitable[Any]],
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Run one pipeline phase and log its elapsed time."""
+        started_at = perf_counter()
+        try:
+            result = await operation(*args, **kwargs)
+        except asyncio.CancelledError:
+            timing_logger.info(
+                "event=phase_completed session=%s phase=%s status=cancelled duration_ms=%d",
+                self._timing_session_id(),
+                phase,
+                int((perf_counter() - started_at) * 1000),
+            )
+            raise
+        except Exception as exc:
+            timing_logger.info(
+                "event=phase_completed session=%s phase=%s status=failed error_type=%s duration_ms=%d",
+                self._timing_session_id(),
+                phase,
+                type(exc).__name__,
+                int((perf_counter() - started_at) * 1000),
+            )
+            raise
+
+        timing_logger.info(
+            "event=phase_completed session=%s phase=%s status=completed duration_ms=%d",
+            self._timing_session_id(),
+            phase,
+            int((perf_counter() - started_at) * 1000),
+        )
+        return result
+
     async def _reply_with_lifecycle(
         self,
         agent: Any,
@@ -173,6 +217,7 @@ class RatingPipeline:
     ) -> Msg:
         """执行 Agent 回复并同步开始、工具和失败状态。"""
         agent_id = agent.name
+        tool_started_at: Dict[str, List[float]] = {}
         if self.state_sync:
             await self.state_sync.on_agent_start(agent_id=agent_id, phase=phase)
             await self.state_sync.on_agent_progress(
@@ -183,6 +228,22 @@ class RatingPipeline:
             )
 
         async def _on_tool_progress(tool_name: str, status: str) -> None:
+            now = perf_counter()
+            if status == "started":
+                tool_started_at.setdefault(tool_name, []).append(now)
+            else:
+                starts = tool_started_at.get(tool_name, [])
+                started_at = starts.pop() if starts else now
+                timing_logger.info(
+                    "event=tool_call session=%s phase=%s agent=%s tool=%s status=%s duration_ms=%d",
+                    self._timing_session_id(),
+                    phase,
+                    agent_id,
+                    tool_name,
+                    status,
+                    int((now - started_at) * 1000),
+                )
+
             if not self.state_sync:
                 return
             labels = {
@@ -198,13 +259,31 @@ class RatingPipeline:
                 phase=phase,
             )
 
+        reply_started_at = perf_counter()
         try:
             with tool_progress_scope(_on_tool_progress):
                 result = await _retry_with_backoff(
                     lambda: agent.reply(message),
                     max_retries=3,
                 )
+        except asyncio.CancelledError:
+            timing_logger.info(
+                "event=agent_reply session=%s phase=%s agent=%s status=cancelled duration_ms=%d",
+                self._timing_session_id(),
+                phase,
+                agent_id,
+                int((perf_counter() - reply_started_at) * 1000),
+            )
+            raise
         except Exception as exc:
+            timing_logger.info(
+                "event=agent_reply session=%s phase=%s agent=%s status=failed error_type=%s duration_ms=%d",
+                self._timing_session_id(),
+                phase,
+                agent_id,
+                type(exc).__name__,
+                int((perf_counter() - reply_started_at) * 1000),
+            )
             if self.state_sync:
                 await self.state_sync.on_agent_failed(
                     agent_id=agent_id,
@@ -212,6 +291,14 @@ class RatingPipeline:
                     phase=phase,
                 )
             raise
+
+        timing_logger.info(
+            "event=agent_reply session=%s phase=%s agent=%s status=completed duration_ms=%d",
+            self._timing_session_id(),
+            phase,
+            agent_id,
+            int((perf_counter() - reply_started_at) * 1000),
+        )
 
         if self.state_sync:
             await self.state_sync.on_agent_progress(
@@ -301,11 +388,19 @@ class RatingPipeline:
         ):
             # Phase 1: Analysts analyze stocks (分析师评估)
             _log("Phase 1: Analyst analysis")
-            analyst_results = await self._run_analysts_with_sync(tickers, date, market_data)
+            analyst_results = await self._run_timed_phase(
+                "analysis",
+                self._run_analysts_with_sync,
+                tickers,
+                date,
+                market_data,
+            )
 
             # Phase 2: Risk Manager provides assessment (风险评估)
             _log("Phase 2: Risk assessment")
-            risk_assessment = await self._run_risk_manager_with_sync(
+            risk_assessment = await self._run_timed_phase(
+                "risk_assessment",
+                self._run_risk_manager_with_sync,
                 tickers,
                 date,
                 market_data,
@@ -314,7 +409,9 @@ class RatingPipeline:
 
             # Phase 3: Conference discussion - multiple rounds (会议讨论，多轮)
             _log("Phase 3: Conference discussion")
-            conference_summary = await self._run_conference_cycles(
+            conference_summary = await self._run_timed_phase(
+                "conference",
+                self._run_conference_cycles,
                 tickers=tickers,
                 date=date,
                 market_data=market_data,
@@ -325,14 +422,18 @@ class RatingPipeline:
 
             # Phase 4: Analysts generate final structured predictions (生成结构化预测)
             _log("Phase 4: Analysts generate final structured predictions")
-            final_predictions = await self._collect_final_predictions(
+            final_predictions = await self._run_timed_phase(
+                "prediction",
+                self._collect_final_predictions,
                 tickers,
                 date,
             )
 
             # Phase 5: PM provides investment recommendations (生成投资建议)
             _log("Phase 5: PM generates investment recommendations")
-            investment_recommendations = await self._run_pm_recommendations(
+            investment_recommendations = await self._run_timed_phase(
+                "investment_recommendation",
+                self._run_pm_recommendations,
                 tickers,
                 date,
                 analyst_results,
@@ -354,7 +455,9 @@ class RatingPipeline:
 
         # Phase 7: Reflection - record to long-term memory (生成记忆)
         _log("Phase 7: Reflection and memory recording")
-        await self._run_reflection(
+        await self._run_timed_phase(
+            "reflection",
+            self._run_reflection,
             date=date,
             analyst_results=analyst_results,
             risk_assessment=risk_assessment,

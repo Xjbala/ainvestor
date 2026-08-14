@@ -52,6 +52,33 @@ class CancelledAgent:
 
 
 class TestPipelineRealtimeLifecycle(unittest.TestCase):
+    def test_timed_phase_logs_session_and_duration(self):
+        asyncio.run(self._test_timed_phase_logs_session_and_duration())
+
+    async def _test_timed_phase_logs_session_and_duration(self):
+        pipeline = RatingPipeline(
+            analysts=[],
+            risk_manager=None,
+            portfolio_manager=None,
+        )
+        pipeline._session_id = "session-phase"
+
+        async def complete_phase():
+            return "complete"
+
+        with self.assertLogs("analysis_timing", level="INFO") as captured:
+            result = await pipeline._run_timed_phase("analysis", complete_phase)
+
+        self.assertEqual("complete", result)
+        self.assertTrue(any(
+            "event=phase_completed" in line
+            and "session=session-phase" in line
+            and "phase=analysis" in line
+            and "status=completed" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
+
     def test_reply_emits_start_tool_progress_and_completion_progress(self):
         asyncio.run(self._test_reply_emits_start_tool_progress_and_completion_progress())
 
@@ -64,11 +91,12 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
             state_sync=sync,
         )
 
-        result = await pipeline._reply_with_lifecycle(
-            FakeAgent(),
-            Msg(name="system", content="分析", role="user"),
-            phase="analysis",
-        )
+        with self.assertLogs("analysis_timing", level="INFO") as captured:
+            result = await pipeline._reply_with_lifecycle(
+                FakeAgent(),
+                Msg(name="system", content="分析", role="user"),
+                phase="analysis",
+            )
 
         self.assertEqual("分析完成", result.content)
         self.assertEqual(("start", "fundamentals_analyst", "analysis"), sync.events[0])
@@ -77,6 +105,20 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
         self.assertEqual(("progress", "fundamentals_analyst", 35, "正在调用工具：analyze_profitability", "analysis"), sync.events[2])
         self.assertEqual(("progress", "fundamentals_analyst", 65, "工具已返回，正在整理分析结果：analyze_profitability", "analysis"), sync.events[3])
         self.assertEqual(("progress", "fundamentals_analyst", 90, "模型回复已完成，正在生成结构化结果", "analysis"), sync.events[4])
+        self.assertTrue(any(
+            "event=tool_call" in line
+            and "tool=analyze_profitability" in line
+            and "status=completed" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
+        self.assertTrue(any(
+            "event=agent_reply" in line
+            and "agent=fundamentals_analyst" in line
+            and "status=completed" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
 
     def test_reply_failure_emits_agent_failed(self):
         asyncio.run(self._test_reply_failure_emits_agent_failed())
@@ -90,16 +132,25 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
             state_sync=sync,
         )
 
-        with self.assertRaisesRegex(RuntimeError, "model unavailable"):
-            await pipeline._reply_with_lifecycle(
-                FailingAgent(),
-                Msg(name="system", content="分析", role="user"),
-                phase="risk_assessment",
-            )
+        with self.assertLogs("analysis_timing", level="INFO") as captured:
+            with self.assertRaisesRegex(RuntimeError, "model unavailable"):
+                await pipeline._reply_with_lifecycle(
+                    FailingAgent(),
+                    Msg(name="system", content="分析", role="user"),
+                    phase="risk_assessment",
+                )
 
         self.assertEqual("failed", sync.events[-1][0])
         self.assertEqual("risk_manager", sync.events[-1][1])
         self.assertEqual("risk_assessment", sync.events[-1][3])
+        self.assertTrue(any(
+            "event=agent_reply" in line
+            and "agent=risk_manager" in line
+            and "status=failed" in line
+            and "error_type=RuntimeError" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
 
     def test_reply_cancellation_is_not_reported_as_agent_failure(self):
         asyncio.run(self._test_reply_cancellation_is_not_reported_as_agent_failure())
@@ -113,14 +164,22 @@ class TestPipelineRealtimeLifecycle(unittest.TestCase):
             state_sync=sync,
         )
 
-        with self.assertRaises(asyncio.CancelledError):
-            await pipeline._reply_with_lifecycle(
-                CancelledAgent(),
-                Msg(name="system", content="分析", role="user"),
-                phase="analysis",
-            )
+        with self.assertLogs("analysis_timing", level="INFO") as captured:
+            with self.assertRaises(asyncio.CancelledError):
+                await pipeline._reply_with_lifecycle(
+                    CancelledAgent(),
+                    Msg(name="system", content="分析", role="user"),
+                    phase="analysis",
+                )
 
         self.assertNotIn("failed", [event[0] for event in sync.events])
+        self.assertTrue(any(
+            "event=agent_reply" in line
+            and "agent=valuation_analyst" in line
+            and "status=cancelled" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
     def test_raw_protocol_text_is_not_exposed_as_analysis_content(self):
         pipeline = RatingPipeline(
             analysts=[],

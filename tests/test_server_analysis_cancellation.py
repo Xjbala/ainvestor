@@ -47,13 +47,14 @@ class TestRunAnalysisCancellation(unittest.TestCase):
             patch("backend.llm.models.get_agent_formatter", return_value=MagicMock()),
             patch("backend.core.pipeline.RatingPipeline", FakePipeline),
         ):
-            with self.assertRaises(asyncio.CancelledError):
-                await run_analysis(
-                    tickers=["603137"],
-                    date="2026-08-11",
-                    session_id="session-cancelled",
-                    session_sync=FakeSessionSync(),
-                )
+            with self.assertLogs("analysis_timing", level="INFO") as captured:
+                with self.assertRaises(asyncio.CancelledError):
+                    await run_analysis(
+                        tickers=["603137"],
+                        date="2026-08-11",
+                        session_id="session-cancelled",
+                        session_sync=FakeSessionSync(),
+                    )
 
         self.assertEqual(
             [
@@ -62,6 +63,17 @@ class TestRunAnalysisCancellation(unittest.TestCase):
             ],
             database.update_session_status.await_args_list,
         )
+        self.assertTrue(any(
+            "event=analysis_started session=session-cancelled" in line
+            for line in captured.output
+        ))
+        self.assertTrue(any(
+            "event=analysis_completed session=session-cancelled"
+            in line
+            and "status=cancelled" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
 
     def test_console_output_is_enabled_before_agent_construction(self):
         asyncio.run(self._test_console_output_is_enabled_before_agent_construction())
@@ -101,15 +113,27 @@ class TestRunAnalysisCancellation(unittest.TestCase):
             patch("backend.llm.models.get_agent_formatter", return_value=MagicMock()),
             patch("backend.core.pipeline.RatingPipeline", CompletedPipeline),
         ):
-            await run_analysis(
-                tickers=["603137"],
-                date="2026-08-11",
-                session_id="session-completed",
-                session_sync=FakeSessionSync(),
-        )
+            with self.assertLogs("analysis_timing", level="INFO") as captured:
+                await run_analysis(
+                    tickers=["603137"],
+                    date="2026-08-11",
+                    session_id="session-completed",
+                    session_sync=FakeSessionSync(),
+                )
 
         initialize_studio.assert_called_once_with("session-completed")
         self.assertTrue(all(not agent.console_output_disabled for agent in created_agents))
+        self.assertTrue(any(
+            "event=analysis_started session=session-completed" in line
+            for line in captured.output
+        ))
+        self.assertTrue(any(
+            "event=analysis_completed session=session-completed"
+            in line
+            and "status=completed" in line
+            and "duration_ms=" in line
+            for line in captured.output
+        ))
 
 
 if __name__ == "__main__":

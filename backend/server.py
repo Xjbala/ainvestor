@@ -9,8 +9,10 @@ import asyncio
 import logging
 import os
 import sys
+from copy import deepcopy
 from contextlib import asynccontextmanager
 from pathlib import Path
+from time import perf_counter
 from typing import List
 
 # 添加项目根目录到Python路径
@@ -21,6 +23,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.config import LOGGING_CONFIG
 
 from backend.api.routes import router as api_router
 from backend.api.auth import router as auth_router
@@ -40,11 +43,26 @@ from backend.agents.tool_progress import with_tool_progress
 load_dotenv()
 
 # 日志配置
+ORIGINAL_STDOUT = sys.stdout
+ORIGINAL_STDERR = sys.stderr
+LOG_FORMAT = "%(asctime)s.%(msecs)03d | %(levelname)s | %(name)s | %(message)s"
+LOG_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+UVICORN_LOG_CONFIG = deepcopy(LOGGING_CONFIG)
+for _formatter_name in ("default", "access"):
+    _formatter = UVICORN_LOG_CONFIG["formatters"][_formatter_name]
+    _formatter["fmt"] = LOG_FORMAT
+    _formatter["datefmt"] = LOG_DATE_FORMAT
+    _formatter["use_colors"] = False
+UVICORN_LOG_CONFIG["handlers"]["access"]["stream"] = ORIGINAL_STDOUT
+UVICORN_LOG_CONFIG["handlers"]["default"]["stream"] = ORIGINAL_STDERR
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format=LOG_FORMAT,
+    datefmt=LOG_DATE_FORMAT,
 )
 logger = logging.getLogger(__name__)
+timing_logger = logging.getLogger("analysis_timing")
 
 # AgentScope prints thinking and tool content blocks to stdout by default.
 # Enable console output so server logs show agent execution details.
@@ -154,9 +172,16 @@ async def run_analysis(
     from backend.config.env_config import get_env_int
     from backend.core.pipeline import RatingPipeline
     from backend.llm.models import get_agent_formatter, get_agent_model
-    
+
+    started_at = perf_counter()
+    timing_logger.info(
+        "event=analysis_started session=%s tickers=%s date=%s",
+        session_id,
+        ",".join(tickers),
+        date,
+    )
     logger.info(f"Starting analysis: session={session_id}, tickers={tickers}, date={date}")
-    
+
     session = None
     try:
         # 获取数据库
@@ -241,6 +266,11 @@ async def run_analysis(
         # 更新会话状态
         await db.update_session_status(session.id, "completed")
         logger.info(f"Analysis completed: session={session.id}")
+        timing_logger.info(
+            "event=analysis_completed session=%s status=completed duration_ms=%d",
+            session_id,
+            int((perf_counter() - started_at) * 1000),
+        )
 
     except asyncio.CancelledError:
         logger.info("Analysis cancellation propagated: session=%s", session_id)
@@ -250,6 +280,11 @@ async def run_analysis(
                 logger.info("Analysis marked cancelled: session=%s", session.id)
             except Exception:
                 logger.exception("Failed to persist cancelled session=%s", session_id)
+        timing_logger.info(
+            "event=analysis_completed session=%s status=cancelled duration_ms=%d",
+            session_id,
+            int((perf_counter() - started_at) * 1000),
+        )
         raise
     except Exception as e:
         logger.error(f"Analysis failed: {e}", exc_info=True)
@@ -258,6 +293,12 @@ async def run_analysis(
                 await db.update_session_status(session.id, "failed")
             except Exception:
                 pass
+        timing_logger.info(
+            "event=analysis_completed session=%s status=failed error_type=%s duration_ms=%d",
+            session_id,
+            type(e).__name__,
+            int((perf_counter() - started_at) * 1000),
+        )
         raise
 
 
@@ -346,6 +387,7 @@ def main():
         app,  # 直接传入app实例而非字符串
         host=host,
         port=port,
+        log_config=UVICORN_LOG_CONFIG,
     )
 
 

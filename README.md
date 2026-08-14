@@ -273,6 +273,28 @@ uv run python main.py --tickers 600519,000858 --date 2026-01-28
 uv run python main.py --tickers 600519 --enable-memory
 ```
 
+### 分析耗时定位
+
+宝塔可继续使用现有启动命令，无需额外面板配置。访问日志和分析耗时日志都会写入 `app.log`，并带本地时间和毫秒：
+
+```bash
+/root/.local/bin/uv run python backend/server.py > app.log 2>&1
+```
+
+一次 AI 分析会使用 WebSocket 请求中的 `session_id` 关联所有耗时事件。将下面的示例 ID 替换为实际会话 ID，即可查看完整过程：
+
+```bash
+grep 'session=bba6b336-2782-45c2-bfb2-49de2518e7f7' app.log
+grep 'event=tool_call.*tool=analyze_profitability' app.log
+```
+
+- `analysis_completed`：整个分析会话的总耗时和最终状态。
+- `phase_completed`：分析、风险评估、会议、预测、投资建议和反思各阶段耗时。
+- `agent_reply`：单个 Agent 的完整回复耗时，包含模型请求、工具调用和重试等待。
+- `tool_call`：单个工具的直接执行耗时，例如 `analyze_profitability`；可与 `agent_reply` 对比判断慢点是否在工具或模型侧。
+
+日志不会记录提示词、模型回复正文、工具参数或密钥。
+
 ### 可选：集成 AgentScope Studio 追踪
 
 AgentScope Studio 用于查看每次分析的 Agent 调用轨迹。它是一个独立服务，默认不启动、不导出追踪，也不会在前端显示入口。启用后仍通过主站同域名访问，例如 `https://your-domain.example/agent-studio/`，而不是新增子域名。
