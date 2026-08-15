@@ -20,6 +20,7 @@ export type EventType =
   | 'summary'
   | 'prediction_update'
   | 'report_generated'
+  | 'quota_exceeded'
   | 'error';
 
 export interface CommandErrorData extends Record<string, unknown> {
@@ -42,6 +43,7 @@ export interface AgentData {
   content: string;
   phase?: string;
   progress?: number;
+  timestamp?: string;
 }
 
 export interface ConferenceData {
@@ -75,6 +77,7 @@ export interface AgentState {
   content: string;
   progress: number;
   phase: string;
+  updatedAt?: string;
 }
 
 // 会议消息

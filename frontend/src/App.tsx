@@ -4,6 +4,8 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { createStartAnalysisCommand, createStopAnalysisCommand, createResumeAnalysisCommand } from './hooks/useWebSocket';
 import { useAnalysisStore } from './stores/analysisStore';
 import { useModeStore } from './stores/modeStore';
+import { useAuthStore } from './stores/authStore';
+import { useEntitlementsStore } from './stores/entitlementsStore';
 import { Sidebar } from './components/Sidebar'; // Layout/Sidebar logic
 import { Workstation } from './components/Dashboard'; // Dashboard view
 import { ExpertDashboard } from './components/ExpertMode';
@@ -12,6 +14,9 @@ import { DataManagement } from './components/DataManagement/DataManagement';
 import { DataViewer } from './components/DataViewer/DataViewer';
 import { StockList } from './components/StockList/StockList';
 import { ReportsPage } from './components/Reports/ReportsPage';
+import { AccountPage } from './components/Account/AccountPage';
+import { AdminSubscriptionsPage } from './components/Admin/AdminSubscriptionsPage';
+import { AuthModal } from './components/Common/AuthModal';
 import { extractInvestmentRecommendations } from './utils/metricExtraction';
 
 // WebSocket服务器地址 - 使用相对路径以适应不同部署环境
@@ -59,12 +64,21 @@ function App() {
   const toast = useToast();
 
   // 包装的mode切换函数，支持设置ticker
-  const handleSwitchMode = (newMode: 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks', ticker?: string) => {
+  const handleSwitchMode = (newMode: 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks' | 'account' | 'admin', ticker?: string) => {
     setMode(newMode);
     if (ticker) {
       setCurrentTicker(ticker);
     }
   };
+
+  // 启动时恢复登录态 + 拉取配额
+  const bootstrapAuth = useAuthStore((s) => s.bootstrap);
+  const refreshEntitlements = useEntitlementsStore((s) => s.refresh);
+  useEffect(() => {
+    bootstrapAuth().finally(() => {
+      refreshEntitlements();
+    });
+  }, [bootstrapAuth, refreshEntitlements]);
 
   // Stock list analysis handlers
   const handleStockAnalyzeAI = (ticker: string) => {
@@ -96,6 +110,19 @@ function App() {
       }
       if (message.event === 'cancellation_requested') {
         setIsStopRequested(true);
+      }
+      if (message.event === 'quota_exceeded') {
+        // WS 配额耗尽：detail 由后端 quota.py 给出
+        const data = message.data as any;
+        const detail = data?.detail || data?.message || 'AI 分析配额已用尽';
+        const isAnon = data?.is_anonymous ?? true;
+        if (isAnon) {
+          toast.warning(`${detail} 请注册以解锁更多配额`);
+        } else {
+          toast.warning(`${detail} 请升级订阅以继续`);
+        }
+        refreshEntitlements();
+        return;
       }
       if (message.event === 'error') {
         const error = typeof message.data.error === 'string'
@@ -238,6 +265,7 @@ function App() {
             messages={feedMessages}
             metrics={metrics}
             report={state.report}
+            analysisDate={state.date}
             analysisStatus={state.status}
             onStopAnalysis={handleStopAnalysis}
             isStopRequested={isStopRequested}
@@ -279,7 +307,24 @@ function App() {
           </main>
         )}
 
+        {/* ACCOUNT MODE */}
+        {mode === 'account' && (
+          <main className="app-main account-mode flex-1 p-6">
+            <AccountPage onSwitchMode={setMode} />
+          </main>
+        )}
+
+        {/* ADMIN MODE */}
+        {mode === 'admin' && (
+          <main className="app-main admin-mode flex-1 p-6">
+            <AdminSubscriptionsPage />
+          </main>
+        )}
+
       </main>
+
+      {/* 全局认证引导模态 */}
+      <AuthModal />
     </div>
   );
 }

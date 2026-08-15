@@ -12,7 +12,9 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..core.dependencies import consume_quota
 from ..persistence.db import get_db_session
+from ..persistence.orm_models import QuotaResource
 from ..valuation import DCFValuationService, ResidualIncomeService
 from ..valuation.relative import RelativeValuationService
 from ..valuation.sotp import SOTPValuationService
@@ -21,6 +23,10 @@ from ..valuation.wacc import WACCService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/valuation", tags=["估值分析"])
+
+# 估值端点统一挂 expert_valuation 配额守卫。
+# 一次调用扣 1 次；一个股票可反复调参数，每次都计入配额。
+_EXPERT_QUOTA_DEP = Depends(consume_quota(QuotaResource.EXPERT_VALUATION))
 
 
 class ValuationResponse(BaseModel):
@@ -60,7 +66,7 @@ class ComparisonResponse(BaseModel):
     headline: Optional[str] = None
 
 
-@router.get("/dcf/{stock_code}", response_model=ValuationResponse)
+@router.get("/dcf/{stock_code}", response_model=ValuationResponse, dependencies=[_EXPERT_QUOTA_DEP])
 async def dcf_valuation(
     stock_code: str,
     high_growth_years: int = Query(5, ge=1, le=10),
@@ -94,7 +100,7 @@ async def dcf_valuation(
     return result
 
 
-@router.get("/residual-income/{stock_code}", response_model=ValuationResponse)
+@router.get("/residual-income/{stock_code}", response_model=ValuationResponse, dependencies=[_EXPERT_QUOTA_DEP])
 async def residual_income_valuation(
     stock_code: str,
     cost_of_equity: float = Query(None, ge=0.01, le=0.3),
@@ -126,7 +132,7 @@ async def residual_income_valuation(
     return result
 
 
-@router.get("/relative/{stock_code}")
+@router.get("/relative/{stock_code}", dependencies=[_EXPERT_QUOTA_DEP])
 async def relative_valuation(
     stock_code: str,
     session: AsyncSession = Depends(get_db_session),
@@ -136,7 +142,7 @@ async def relative_valuation(
     return await service.valuate(stock_code)
 
 
-@router.get("/wacc/{stock_code}")
+@router.get("/wacc/{stock_code}", dependencies=[_EXPERT_QUOTA_DEP])
 async def wacc_breakdown(
     stock_code: str,
     session: AsyncSession = Depends(get_db_session),
@@ -146,7 +152,7 @@ async def wacc_breakdown(
     return await service.calculate(stock_code)
 
 
-@router.get("/triangulate/{stock_code}")
+@router.get("/triangulate/{stock_code}", dependencies=[_EXPERT_QUOTA_DEP])
 async def triangulate_valuation(
     stock_code: str,
     session: AsyncSession = Depends(get_db_session),
@@ -156,7 +162,7 @@ async def triangulate_valuation(
     return await service.valuate(stock_code)
 
 
-@router.get("/sotp/{stock_code}")
+@router.get("/sotp/{stock_code}", dependencies=[_EXPERT_QUOTA_DEP])
 async def sotp_valuation(
     stock_code: str,
     session: AsyncSession = Depends(get_db_session),
@@ -169,7 +175,7 @@ async def sotp_valuation(
     return await service.valuate(stock_code)
 
 
-@router.get("/compare/{stock_code}", response_model=ComparisonResponse)
+@router.get("/compare/{stock_code}", response_model=ComparisonResponse, dependencies=[_EXPERT_QUOTA_DEP])
 async def compare_valuations(
     stock_code: str,
     session: AsyncSession = Depends(get_db_session),

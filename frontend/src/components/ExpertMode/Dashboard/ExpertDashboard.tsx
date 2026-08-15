@@ -2,6 +2,7 @@ import { useAnalysisStore } from '../../../stores/analysisStore';
 import { ExpertModeLayout } from '../Lab/ExpertModeLayout';
 import { companyApi, type Company } from '../../../services/companyApi';
 import { useState, useEffect } from 'react';
+import { QuotaBadge } from '../../Common/QuotaBadge';
 
 interface ExpertDashboardProps {
     ticker?: string;
@@ -23,6 +24,11 @@ export function ExpertDashboard({ ticker }: ExpertDashboardProps) {
     }, [displayTicker]);
 
     return (
-        <ExpertModeLayout ticker={displayTicker} metrics={metrics} company={company} />
+        <div>
+            <div className="flex justify-end mb-2">
+                <QuotaBadge resource="expert_valuation" />
+            </div>
+            <ExpertModeLayout ticker={displayTicker} metrics={metrics} company={company} />
+        </div>
     );
 }

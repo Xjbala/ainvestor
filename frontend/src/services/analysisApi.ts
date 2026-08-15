@@ -5,6 +5,8 @@
  * 基于 leofun 项目的专业估值实现
  */
 
+import { authFetch, QuotaExceededError } from './authApi';
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const API_BASE = `${API_URL}/api`;
 
@@ -298,7 +300,16 @@ export interface TriangulatedValuation {
 // ============================================================
 
 async function fetchJson<T>(url: string): Promise<T> {
-    const response = await fetch(url);
+    const response = await authFetch(url);
+    if (response.status === 402 || response.status === 429) {
+        let detail: any = null;
+        try {
+            detail = await response.json();
+        } catch {
+            detail = await response.text();
+        }
+        throw new QuotaExceededError(response.status, detail?.detail ?? detail);
+    }
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API request failed: ${response.status} - ${errorText}`);

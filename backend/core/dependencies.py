@@ -5,9 +5,10 @@ FastAPI 依赖注入
 提供认证、数据库会话等依赖项，用于 API 路由。
 """
 
-from typing import Optional
+import logging
+from typing import Optional, Tuple
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +16,15 @@ from ..persistence.db import get_db_session
 from ..persistence.orm_models import User, UserRole
 from ..persistence.repository import UserRepository
 from .auth import verify_access_token
+from .quota import (
+    ANON_COOKIE_NAME,
+    Identity,
+    generate_anonymous_key,
+    hash_anonymous_key,
+    hash_ip,
+)
+
+logger = logging.getLogger(__name__)
 
 # OAuth2 密码bearer模式
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
@@ -177,3 +187,91 @@ async def require_superadmin(
             detail="需要超级管理员权限",
         )
     return current_user
+
+
+# ============================================================
+# 匿名身份与配额
+# ============================================================
+
+def _client_ip(request: Request) -> Optional[str]:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+async def get_anonymous_or_user(
+    request: Request,
+    response: Response,
+    token: Optional[str] = Depends(oauth2_scheme),
+    session: AsyncSession = Depends(get_db_session),
+) -> Tuple[Identity, Optional[User]]:
+    """返回 (Identity, User|None)。
+
+    优先解析 JWT，未提供或失效则回退到匿名 cookie。
+    cookie 不存在时生成新 UUID 并 Set-Cookie（HttpOnly, SameSite=Lax, 7天）。
+    匿名 cookie 值在落库前先 hash，避免明文关联。
+    """
+    if token:
+        user_id = verify_access_token(token)
+        if user_id:
+            user_repo = UserRepository(session)
+            user = await user_repo.get_by_id(user_id)
+            if user and user.is_active:
+                return Identity(
+                    user_id=user.id,
+                    anonymous_key=None,
+                    ip_hash=hash_ip(_client_ip(request)),
+                ), user
+
+    # 匿名路径
+    raw_cookie = request.cookies.get(ANON_COOKIE_NAME)
+    if raw_cookie:
+        anon_key = hash_anonymous_key(raw_cookie)
+    else:
+        raw_cookie = generate_anonymous_key()
+        anon_key = hash_anonymous_key(raw_cookie)
+        response.set_cookie(
+            key=ANON_COOKIE_NAME,
+            value=raw_cookie,
+            max_age=60 * 60 * 24 * 7,  # 7 天
+            httponly=True,
+            samesite="lax",
+            secure=False,  # 生产环境通过反向代理上 HTTPS 后改为 True
+        )
+
+    return Identity(
+        user_id=None,
+        anonymous_key=anon_key,
+        ip_hash=hash_ip(_client_ip(request)),
+    ), None
+
+
+async def get_identity(
+    identity_user: Tuple[Identity, Optional[User]] = Depends(get_anonymous_or_user),
+) -> Identity:
+    """只取 Identity（用于只需配额闸门、不需要 user 对象的路由）。"""
+    return identity_user[0]
+
+
+def consume_quota(resource):
+    """配额守卫依赖工厂。
+
+    用法:
+        @router.get("/foo", dependencies=[Depends(consume_quota(QuotaResource.EXPERT_VALUATION))])
+        async def foo(...):
+            ...
+    """
+    from ..persistence.orm_models import QuotaResource as _QR
+    res = _QR(resource) if isinstance(resource, str) else resource
+
+    async def _guard(
+        identity: Identity = Depends(get_identity),
+        session: AsyncSession = Depends(get_db_session),
+    ) -> Identity:
+        from .quota import check_and_consume
+        await check_and_consume(session, identity, res)
+        # get_db_session 会自动 commit，usage_event 落库
+        return identity
+
+    return _guard

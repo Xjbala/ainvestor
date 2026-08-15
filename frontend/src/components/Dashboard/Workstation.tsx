@@ -9,10 +9,15 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Zap, Terminal, ArrowRight, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { createStartAnalysisCommand } from '../../hooks/useWebSocket';
 import { valuationApi } from '../../services/analysisApi';
+import { QuotaExceededError } from '../../services/authApi';
 import { companiesApi, type Company } from '../../services/companiesApi';
+import { QuotaBadge } from '../Common/QuotaBadge';
+import { useToast } from '../Common/Toast';
+import { openAuthModal } from '../Common/AuthModal';
+import { useEntitlementsStore } from '../../stores/entitlementsStore';
 
 interface WorkstationProps {
-    onSwitchMode: (mode: 'dashboard' | 'ai' | 'expert' | 'reports', ticker?: string) => void;
+    onSwitchMode: (mode: 'dashboard' | 'ai' | 'expert' | 'reports' | 'account', ticker?: string) => void;
     onSendCommand: (command: object) => void;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     dispatch: React.Dispatch<any>;
@@ -38,6 +43,8 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const searchRef = useRef<HTMLDivElement>(null);
+    const toast = useToast();
+    const refreshEntitlements = useEntitlementsStore((s) => s.refresh);
 
     // 点击外部关闭联想下拉
     useEffect(() => {
@@ -144,6 +151,21 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
         if (searchInput.trim()) {
             const ticker = searchInput.toUpperCase();
 
+            // 配额预检：剩余为 0 直接拦截，避免发 WS/HTTP
+            const ents = useEntitlementsStore.getState().data;
+            const resource = mode === 'ai' ? 'ai_analysis' : 'expert_valuation';
+            const ent = ents?.entitlements?.[resource];
+            if (ent && ent.remaining <= 0) {
+                const isAnon = ents?.is_anonymous ?? true;
+                toast.warning('配额已用尽');
+                if (isAnon) {
+                    openAuthModal({ onSuccess: () => refreshEntitlements(), title: '注册以解锁更多配额' });
+                } else {
+                    onSwitchMode('account');
+                }
+                return;
+            }
+
             if (mode === 'ai') {
                 onSendCommand(createStartAnalysisCommand(
                     [ticker],
@@ -201,7 +223,19 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                     }
 
                     onSwitchMode(mode, ticker);
-                } catch {
+                } catch (e: any) {
+                    // 配额耗尽：匿名引导注册，登录引导去账户页
+                    if (e instanceof QuotaExceededError) {
+                        await refreshEntitlements();
+                        if (e.isAnonymous) {
+                            toast.warning('专家估值配额已用尽，请注册以解锁更多配额');
+                            openAuthModal({ onSuccess: () => refreshEntitlements(), title: '注册以解锁更多配额' });
+                        } else {
+                            toast.warning('专家估值配额已用尽，请升级订阅');
+                            onSwitchMode('account');
+                        }
+                        return;
+                    }
                     dispatch({
                         type: 'SESSION_START',
                         payload: {
@@ -302,6 +336,9 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                     <div className="absolute top-6 right-6 w-12 h-12 bg-white/10 rounded-vibe-sm flex items-center justify-center group-hover:scale-110 transition-transform backdrop-blur-sm border border-white/20">
                         <Zap className="w-6 h-6" />
                     </div>
+                    <div className="absolute top-6 right-20">
+                        <QuotaBadge resource="ai_analysis" compact onNavigateToAccount={() => onSwitchMode('account')} />
+                    </div>
                     <div className="relative z-10">
                         <h3 className="text-2xl font-bold mb-3">AI智能分析模式</h3>
                         <p className="text-white/85 leading-relaxed mb-6 text-sm">
@@ -320,6 +357,9 @@ export function Workstation({ onSwitchMode, onSendCommand, dispatch }: Workstati
                 >
                     <div className="absolute top-6 right-6 w-12 h-12 bg-muted rounded-vibe-sm flex items-center justify-center group-hover:bg-brand-50 group-hover:text-brand-600 transition-colors">
                         <Terminal className="w-6 h-6 text-muted-foreground group-hover:text-brand-600" />
+                    </div>
+                    <div className="absolute top-6 right-20">
+                        <QuotaBadge resource="expert_valuation" compact onNavigateToAccount={() => onSwitchMode('account')} />
                     </div>
                     <h3 className="text-2xl font-bold text-foreground mb-3">专家深度模式</h3>
                     <p className="text-muted-foreground leading-relaxed mb-6 text-sm">

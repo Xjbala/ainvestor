@@ -31,3 +31,7 @@ export type {
 export { analysisApi, valuationApi } from './analysisApi';
 export { crawlerApi } from './crawlerApi';
 export { companiesApi } from './companiesApi';
+
+// 认证与配额
+export { authApi, authFetch, getAccessToken, clearTokens, QuotaExceededError } from './authApi';
+export type { TokenResponse, UserInfo, EntitlementsResponse, Entitlement } from './authApi';

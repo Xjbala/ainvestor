@@ -10,7 +10,7 @@ import { persist } from 'zustand/middleware';
 /**
  * 分析模式类型
  */
-export type AnalysisMode = 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks';
+export type AnalysisMode = 'dashboard' | 'ai' | 'expert' | 'reports' | 'data' | 'dataView' | 'stocks' | 'account' | 'admin';
 
 /**
  * 模式状态接口

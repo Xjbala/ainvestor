@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { WebSocketMessage } from '../types/message';
+import { getAccessToken } from '../services/authApi';
 
 interface UseWebSocketOptions {
     url: string;
@@ -49,7 +50,14 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
         shouldReconnectRef.current = true;
         try {
-            const ws = new WebSocket(url);
+            // 登录用户把 token 拼到 query；匿名用户靠 cookie anon_id（由后端 Set-Cookie 种下）
+            let finalUrl = url;
+            const token = getAccessToken();
+            if (token) {
+                const sep = url.includes('?') ? '&' : '?';
+                finalUrl = `${url}${sep}token=${encodeURIComponent(token)}`;
+            }
+            const ws = new WebSocket(finalUrl);
 
             ws.onopen = () => {
                 console.log('WebSocket connected');

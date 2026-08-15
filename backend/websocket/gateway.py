@@ -234,7 +234,7 @@ class WebSocketGateway:
                 )
                 await websocket.send(error_msg.to_json())
                 return
-        
+
         # 如果未配置分析处理器，不创建无法执行的会话。
         if not self._analysis_handler:
             error_msg = create_error_message(
@@ -242,6 +242,36 @@ class WebSocketGateway:
                 error="Analysis handler not configured",
             )
             await websocket.send(error_msg.to_json())
+            return
+
+        # 配额闸门：AI 分析扣 1 次。未登录走匿名 cookie + IP。
+        try:
+            identity = await self._resolve_identity(websocket)
+        except Exception as e:
+            error_msg = create_error_message(
+                session_id="",
+                error="Quota check failed",
+                details=str(e),
+            )
+            await websocket.send(error_msg.to_json())
+            return
+
+        quota_ok, quota_detail = await self._check_ai_quota(identity)
+        if not quota_ok:
+            from ..persistence.orm_models import QuotaResource
+            error_msg = create_error_message(
+                session_id="",
+                error="quota_exceeded",
+                details=quota_detail or "AI 分析配额已用尽",
+            )
+            # 走 HTTP 状态码语义：402 引导注册（匿名），429 引导升级（登录）
+            await websocket.send(json.dumps({
+                "type": "system",
+                "event": "quota_exceeded",
+                "resource": QuotaResource.AI_ANALYSIS.value,
+                "detail": quota_detail,
+                "is_anonymous": identity.is_anonymous,
+            }))
             return
 
         # 生成独立会话和同步器，避免并发分析覆盖其他会话的 session_id。
@@ -254,6 +284,7 @@ class WebSocketGateway:
             "tickers": tickers,
             "date": date,
             "started": False,
+            "identity": identity,
         }
         logger.info(
             "start_analysis received: session=%s tickers=%s client=%s",
@@ -268,6 +299,81 @@ class WebSocketGateway:
             self._run_analysis(tickers, date, session_id, session_sync)
         )
         self._current_tasks[session_id] = task
+
+    async def _resolve_identity(self, websocket: WebSocketServerProtocol):
+        """从 WebSocket 的 query/header 解析身份。
+
+        前端约定：
+          - query: ?token=<JWT>（登录用户）
+          - cookie: anon_id=<UUID>（匿名用户，由前端在连接前种）
+        """
+        from urllib.parse import parse_qs
+        from http.cookies import SimpleCookie
+
+        from ..core.auth import verify_access_token
+        from ..core.quota import (
+            ANON_COOKIE_NAME,
+            Identity,
+            generate_anonymous_key,
+            hash_anonymous_key,
+            hash_ip,
+        )
+
+        path = getattr(websocket, "path", "") or ""
+        if "?" in path:
+            qs = parse_qs(path.split("?", 1)[1])
+            token = qs.get("token", [None])[0]
+        else:
+            token = None
+
+        if token:
+            user_id = verify_access_token(token)
+            if user_id:
+                ip = getattr(websocket, "remote_address", None)
+                ip_str = ip[0] if ip else None
+                return Identity(user_id=user_id, anonymous_key=None, ip_hash=hash_ip(ip_str))
+
+        # 匿名路径：从 cookie header 取 anon_id
+        raw_headers = dict(getattr(websocket, "request_headers", {}))
+        cookie_header = raw_headers.get("cookie") or raw_headers.get("Cookie") or ""
+        cookie = SimpleCookie()
+        try:
+            cookie.load(cookie_header)
+        except Exception:
+            pass
+        raw_cookie = cookie.get(ANON_COOKIE_NAME)
+        if raw_cookie and raw_cookie.value:
+            anon_key = hash_anonymous_key(raw_cookie.value)
+        else:
+            # WS 无法 Set-Cookie，匿名用户必须有前端预先种的 cookie
+            anon_key = hash_anonymous_key(generate_anonymous_key())
+
+        ip = getattr(websocket, "remote_address", None)
+        ip_str = ip[0] if ip else None
+        return Identity(user_id=None, anonymous_key=anon_key, ip_hash=hash_ip(ip_str))
+
+    async def _check_ai_quota(self, identity) -> tuple:
+        """返回 (ok, detail)。在事务内扣 1 次。"""
+        from datetime import datetime as _dt
+
+        from ..core.quota import check_and_consume
+        from ..persistence.db import async_session_factory
+        from ..persistence.orm_models import QuotaResource
+
+        try:
+            async with async_session_factory() as db_session:
+                await check_and_consume(
+                    db_session,
+                    identity,
+                    QuotaResource.AI_ANALYSIS,
+                )
+                await db_session.commit()
+            return True, None
+        except Exception as e:
+            detail = getattr(e, "detail", None) or str(e)
+            if isinstance(detail, dict):
+                detail = detail.get("message")
+            return False, detail
     
     def _cleanup_session(self, session_id: str):
         """清理已结束分析会话的运行时状态。"""

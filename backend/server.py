@@ -34,6 +34,8 @@ from backend.api.valuation import router as valuation_router
 from backend.api.companies import router as companies_router
 from backend.api.exchanges import router as exchanges_router
 from backend.api.segments import router as segments_router
+from backend.api.entitlements import router as entitlements_router
+from backend.api.admin_subscriptions import router as admin_subscriptions_router
 from backend.persistence.compat import get_database, close_database
 from backend.observability.studio import initialize as initialize_studio
 from backend.websocket.gateway import WebSocketGateway
@@ -363,6 +365,8 @@ app.include_router(valuation_router)
 app.include_router(companies_router)
 app.include_router(exchanges_router)
 app.include_router(segments_router)
+app.include_router(entitlements_router)
+app.include_router(admin_subscriptions_router)
 
 
 @app.get("/")

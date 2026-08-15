@@ -8,7 +8,7 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,11 @@ from ..core.auth import (
     TokenResponse,
 )
 from ..core.dependencies import get_current_user
+from ..core.quota import (
+    ANON_COOKIE_NAME,
+    hash_anonymous_key,
+    migrate_anonymous_usage,
+)
 from ..persistence.db import get_db_session
 from ..persistence.orm_models import User, UserRole
 from ..persistence.repository import UserRepository
@@ -76,12 +81,15 @@ class MessageResponse(BaseModel):
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
+    http_request: Request,
+    http_response: Response,
     session: AsyncSession = Depends(get_db_session),
 ):
     """
     用户注册
 
     创建新用户账户并返回认证令牌。
+    注册时把匿名 cookie 名下的 usage_events 迁移到新用户（配额迁移）。
     """
     user_repo = UserRepository(session)
 
@@ -109,6 +117,16 @@ async def register(
         hashed_password=hashed_password,
         role=UserRole.USER,
     )
+
+    # 配额迁移：把匿名 cookie 名下的用量迁到新用户，让未登录用过的次数不浪费
+    raw_cookie = http_request.cookies.get(ANON_COOKIE_NAME)
+    if raw_cookie:
+        anon_key = hash_anonymous_key(raw_cookie)
+        migrated = await migrate_anonymous_usage(session, anon_key, user.id)
+        if migrated:
+            logger.info(f"Migrated {migrated} anonymous usage events to user {user.username}")
+            # 清掉匿名 cookie，后续走 JWT
+            http_response.delete_cookie(ANON_COOKIE_NAME)
 
     logger.info(f"New user registered: {user.username}")
 
