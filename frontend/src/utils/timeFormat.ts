@@ -11,6 +11,7 @@
 export function formatTime(timestamp: string): string {
     try {
         const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '--:--:--';
         return date.toLocaleTimeString('zh-CN', {
             hour12: false,
             hour: '2-digit',
@@ -28,6 +29,7 @@ export function formatTime(timestamp: string): string {
 export function formatTimeShort(timestamp: string): string {
     try {
         const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '--:--';
         return date.toLocaleTimeString('zh-CN', {
             hour12: false,
             hour: '2-digit',
@@ -44,6 +46,7 @@ export function formatTimeShort(timestamp: string): string {
 export function formatDateTime(timestamp: string): string {
     try {
         const date = new Date(timestamp);
+        if (Number.isNaN(date.getTime())) return '--';
         return date.toLocaleString('zh-CN', {
             hour12: false,
             year: 'numeric',

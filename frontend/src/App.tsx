@@ -179,7 +179,7 @@ function App() {
         agentId: agent.id,
         agentName: agent.name || getDisplayName(agent.id),
         content: agent.content || '',
-        timestamp: new Date().toISOString(),
+        timestamp: agent.updatedAt || '',
         type: (
           agent.status === 'error'
             ? 'alert'

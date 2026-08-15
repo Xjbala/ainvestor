@@ -6,7 +6,7 @@
 """
 
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 import json
@@ -56,6 +56,11 @@ class EventType(str, Enum):
     ERROR = "error"
 
 
+def _utc_timestamp() -> str:
+    """Return an ISO 8601 timestamp unambiguous to WebSocket clients."""
+    return datetime.now(timezone.utc).isoformat()
+
+
 @dataclass
 class WebSocketMessage:
     """WebSocket消息格式"""
@@ -63,7 +68,7 @@ class WebSocketMessage:
     event: EventType
     data: Dict[str, Any] = field(default_factory=dict)
     session_id: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = field(default_factory=_utc_timestamp)
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     
     def to_json(self) -> str:
@@ -90,7 +95,7 @@ class WebSocketMessage:
             event=EventType(data.get("event", "ping")),
             data=data.get("data", {}),
             session_id=data.get("session_id"),
-            timestamp=data.get("timestamp", datetime.now().isoformat()),
+            timestamp=data.get("timestamp", _utc_timestamp()),
             message_id=data.get("message_id", str(uuid.uuid4())),
         )
 

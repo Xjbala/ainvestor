@@ -10,6 +10,7 @@ export interface AnalystCardProps {
     status: 'pending' | 'active' | 'completed';
     progress: number;
     logs: string[];
+    timestamp?: string;
     isActiveFilter?: boolean;
     onClick?: () => void;
 }
@@ -22,6 +23,7 @@ export function AnalystCard({
     status,
     progress,
     logs,
+    timestamp,
     isActiveFilter,
     onClick
 }: AnalystCardProps) {
@@ -69,7 +71,7 @@ export function AnalystCard({
             <div className="card-logs">
                 {logs.slice(-3).map((log, index) => (
                     <div key={index} className="log-item">
-                        <span className="log-time">[{formatTimeShort(new Date().toISOString())}]</span>
+                        <span className="log-time">[{timestamp ? formatTimeShort(timestamp) : '--:--'}]</span>
                         <span className={`log-text ${log.includes('警告') || log.includes('风险') ? 'highlight' : ''}`}>{log}</span>
                     </div>
                 ))}

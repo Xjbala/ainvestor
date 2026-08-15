@@ -2,6 +2,7 @@
 """WebSocket 状态同步器单元测试。"""
 
 import asyncio
+from datetime import datetime, timedelta
 import os
 import sys
 import unittest
@@ -9,11 +10,21 @@ from unittest.mock import AsyncMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.websocket.message import EventType
+from backend.websocket.message import EventType, MessageType, WebSocketMessage
 from backend.websocket.state_sync import WebSocketStateSync
 
 
 class TestWebSocketStateSync(unittest.TestCase):
+    def test_message_timestamp_has_an_explicit_utc_offset(self):
+        message = WebSocketMessage(
+            type=MessageType.SYSTEM,
+            event=EventType.PING,
+        )
+
+        timestamp = datetime.fromisoformat(message.timestamp)
+
+        self.assertEqual(timedelta(0), timestamp.utcoffset())
+
     def test_agent_complete_only_broadcasts(self):
         async def run_test():
             state_sync = WebSocketStateSync()

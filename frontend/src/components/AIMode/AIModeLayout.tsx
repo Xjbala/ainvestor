@@ -16,6 +16,8 @@ import {
 import { companyApi } from '../../services/companyApi';
 import { exportReport } from '../../utils/reportExport';
 import { formatTimeShort } from '../../utils/timeFormat';
+import { shouldShowReportArea } from './reportVisibility';
+import { QuotaBadge } from '../Common/QuotaBadge';
 
 // Use this interface to accept props from App.tsx
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,12 +30,13 @@ interface AIModeLayoutProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metrics?: any;
     report?: string;
+    analysisDate?: string;
     analysisStatus?: 'idle' | 'running' | 'completed' | 'failed' | 'cancelled';
     onStopAnalysis?: () => void;
     isStopRequested?: boolean;
 }
 
-export function AIModeLayout({ ticker, agents = [], messages = [], metrics, report, analysisStatus, onStopAnalysis, isStopRequested }: AIModeLayoutProps) {
+export function AIModeLayout({ ticker, agents = [], messages = [], metrics, report, analysisDate, analysisStatus, onStopAnalysis, isStopRequested }: AIModeLayoutProps) {
 
     // Selected Agent for Filtering: null = show all
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
@@ -71,11 +74,14 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
     // Helper to get agent data by ID
     const getAgentData = (id: string) => {
         const agent = agents.find(a => a.id === id);
-        const summaryLines = extractSummary(agent?.content);
+        const isStaleProgressMessage = /^(正在进行深度分析|正在准备分析任务)(?:\.\.\.|…)?$/.test(
+            agent?.content?.trim() || '',
+        );
+        const summaryLines = isStaleProgressMessage ? [] : extractSummary(agent?.content);
 
         let logs: string[];
-        if (agent?.status === 'complete' && summaryLines.length > 0) {
-            logs = summaryLines;
+        if (agent?.status === 'complete') {
+            logs = summaryLines.length > 0 ? summaryLines : ['分析已完成'];
         } else if (agent?.status === 'analyzing') {
             logs = ['正在进行深度分析...'];
         } else {
@@ -84,8 +90,9 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
 
         return {
             status: agent?.status === 'complete' ? 'completed' : (agent?.status === 'analyzing' ? 'active' : 'pending'),
-            progress: agent?.progress || (agent?.status === 'complete' ? 100 : 0),
+            progress: agent?.status === 'complete' ? 100 : (agent?.progress ?? 0),
             logs,
+            timestamp: agent?.updatedAt,
         };
     };
 
@@ -93,6 +100,19 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
     const valData = getAgentData('valuation_analyst');
     const riskData = getAgentData('risk_manager');
     const portData = getAgentData('portfolio_manager');
+
+    const latestEventTimestamp = useMemo(() => {
+        const timestamps = [
+            ...agents.map(agent => agent.updatedAt),
+            ...messages.map(message => message.timestamp),
+        ].filter((timestamp): timestamp is string => (
+            typeof timestamp === 'string' && !Number.isNaN(Date.parse(timestamp))
+        ));
+
+        return timestamps.sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+    }, [agents, messages]);
+
+    const reportAreaVisible = shouldShowReportArea(analysisStatus, showReport, report);
 
     // 整体进度与阶段追踪
     const allAgentData = [fundData, valData, riskData, portData];
@@ -249,8 +269,12 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
         <div className="ai-mode-container">
             <StockHeader
                 ticker={ticker}
-                lastUpdated={formatTimeShort(new Date().toISOString())}
+                lastUpdated={latestEventTimestamp ? formatTimeShort(latestEventTimestamp) : '--:--'}
             />
+
+            <div className="flex justify-end px-4 py-1">
+                <QuotaBadge resource="ai_analysis" compact />
+            </div>
 
             <div className="ai-mode-content">
                 <div className="ai-left-column">
@@ -263,6 +287,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         status={fundData.status as 'pending' | 'active' | 'completed'}
                         progress={fundData.progress}
                         logs={fundData.logs}
+                        timestamp={fundData.timestamp}
                         isActiveFilter={selectedAgentId === 'fundamentals_analyst'}
                         onClick={() => handleCardClick('基本面分析师')}
                     />
@@ -281,6 +306,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                                   ].slice(0, 3)
                                 : valData.logs
                         }
+                        timestamp={valData.timestamp}
                         isActiveFilter={selectedAgentId === 'valuation_analyst'}
                         onClick={() => handleCardClick('估值分析师')}
                     />
@@ -292,6 +318,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         status={riskData.status as 'pending' | 'active' | 'completed'}
                         progress={riskData.progress}
                         logs={riskData.logs}
+                        timestamp={riskData.timestamp}
                         isActiveFilter={selectedAgentId === 'risk_manager'}
                         onClick={() => handleCardClick('风险管理师')}
                     />
@@ -303,6 +330,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         status={portData.status as 'pending' | 'active' | 'completed'}
                         progress={portData.progress}
                         logs={portData.logs}
+                        timestamp={portData.timestamp}
                         isActiveFilter={selectedAgentId === 'portfolio_manager'}
                         onClick={() => handleCardClick('投资顾问')}
                     />
@@ -360,7 +388,7 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                         </div>
                         <div className="meta-item">
                             <div className="meta-label">分析日期</div>
-                            <div className="meta-value">{new Date().toISOString().slice(0, 10)}</div>
+                            <div className="meta-value">{analysisDate || '—'}</div>
                         </div>
                         <div className="meta-item">
                             <div className="meta-label">智能体</div>
@@ -400,7 +428,11 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                 />
 
                 <DecisionFooter
-                status={analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled' ? 'ready' : 'analyzing'}
+                status={analysisStatus === 'running'
+                    ? 'analyzing'
+                    : analysisStatus === 'idle' || !analysisStatus
+                        ? 'idle'
+                        : 'ready'}
                 recommendation={
                     analysisStatus === 'completed' || analysisStatus === 'failed' || analysisStatus === 'cancelled'
                         ? (metrics?.recommendation && metrics.recommendation !== '分析中'
@@ -462,27 +494,40 @@ export function AIModeLayout({ ticker, agents = [], messages = [], metrics, repo
                 isStopRequested={isStopRequested}
             />
                 </div>
+                {reportAreaVisible && (
+                    <section
+                        id={showReport && report ? 'ai-report-content' : undefined}
+                        className={`report-section ${showReport && report ? '' : 'report-placeholder'}`}
+                    >
+                        {showReport && report ? (
+                            <>
+                                <div className="report-section-header">
+                                    <h2>📋 完整投资决策报告</h2>
+                                    <button
+                                        className="report-close-btn"
+                                        onClick={() => setShowReport(false)}
+                                    >
+                                        ✕ 关闭
+                                    </button>
+                                </div>
+                                <div className="report-markdown-body agent-markdown">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {stripThinkingContent(report)}
+                                    </ReactMarkdown>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="report-placeholder-content">
+                                <span className="report-placeholder-icon">📋</span>
+                                <div>
+                                    <h2>投资决策报告编制中</h2>
+                                    <p>正在汇总分析师观点、风险评估与投资建议。</p>
+                                </div>
+                            </div>
+                        )}
+                    </section>
+                )}
             </div>
-
-            {/* Report Content Section */}
-            {showReport && report && (
-                <div id="ai-report-content" className="report-section">
-                    <div className="report-section-header">
-                        <h2>📋 完整投资决策报告</h2>
-                        <button
-                            className="report-close-btn"
-                            onClick={() => setShowReport(false)}
-                        >
-                            ✕ 关闭
-                        </button>
-                    </div>
-                    <div className="report-markdown-body agent-markdown">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {stripThinkingContent(report)}
-                        </ReactMarkdown>
-                    </div>
-                </div>
-            )}
             {/* 隐藏容器：始终渲染报告 Markdown，供导出时提取 HTML */}
             {report && (
                 <div id="hidden-report-render" style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>

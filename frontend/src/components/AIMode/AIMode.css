@@ -1245,9 +1245,50 @@
    ============================================ */
 
 .report-section {
-    margin-top: 20px;
-    margin-bottom: 20px;
+    grid-column: 1 / -1;
     animation: reportSlideIn 0.3s ease-out;
+}
+
+.report-placeholder {
+    min-height: 220px;
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--border);
+    background: var(--muted);
+    border-radius: var(--radius);
+    padding: 24px;
+}
+
+.report-placeholder-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    text-align: left;
+}
+
+.report-placeholder-icon {
+    align-items: center;
+    background: var(--brand-50);
+    border-radius: calc(var(--radius) - 8px);
+    display: flex;
+    flex: 0 0 44px;
+    font-size: 20px;
+    height: 44px;
+    justify-content: center;
+}
+
+.report-placeholder h2 {
+    color: var(--foreground);
+    font-family: var(--font-serif);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 4px;
+}
+
+.report-placeholder p {
+    color: var(--muted-foreground);
+    font-size: 13px;
+    margin: 0;
 }
 
 @keyframes reportSlideIn {
@@ -1560,11 +1601,6 @@
 
 .vmp-bar-row.is-current .vmp-bar-price {
     color: var(--destructive);
-}
-
-/* === 报告区跨双栏全宽 === */
-.report-section {
-    grid-column: 1 / -1;
 }
 
 /* === 响应式：窄屏堆叠为单栏 === */

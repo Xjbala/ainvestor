@@ -76,7 +76,7 @@ export interface AnalysisMetrics {
 
 
 // Reducer
-function analysisReducer(state: AnalysisSession, action: Action): AnalysisSession {
+export function analysisReducer(state: AnalysisSession, action: Action): AnalysisSession {
     switch (action.type) {
         case 'SESSION_START':
             if (state.id === action.payload.id && state.status === 'running') {
@@ -94,11 +94,24 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                 status: 'running',
             };
 
-        case 'SESSION_END':
+        case 'SESSION_END': {
+            const status = action.payload.status || (action.payload.success ? 'completed' : 'failed');
+            const agents = status === 'completed'
+                ? Object.fromEntries(
+                    Object.entries(state.agents).map(([agentId, agent]) => [
+                        agentId,
+                        agent.status === 'analyzing'
+                            ? { ...agent, status: 'complete' as const, progress: 100 }
+                            : agent,
+                    ]),
+                )
+                : state.agents;
             return {
                 ...state,
-                status: action.payload.status || (action.payload.success ? 'completed' : 'failed'),
+                status,
+                agents,
             };
+        }
 
         case 'AGENT_START': {
             const agentId = action.payload.agent_id;
@@ -113,6 +126,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         content: action.payload.content || '正在准备分析任务',
                         progress: 0,
                         phase: action.payload.phase || '',
+                        updatedAt: action.payload.timestamp,
                     },
                 },
             };
@@ -128,6 +142,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         ...state.agents[agentId],
                         progress: action.payload.progress || 0,
                         content: action.payload.content || state.agents[agentId]?.content || '',
+                        updatedAt: action.payload.timestamp || state.agents[agentId]?.updatedAt,
                     },
                 },
             };
@@ -147,6 +162,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         content: agentContent,
                         progress: 100,
                         phase: action.payload.phase || '',
+                        updatedAt: action.payload.timestamp,
                     },
                 },
                 // Removed: conferenceMessages addition to prevent duplicates
@@ -167,6 +183,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         content: action.payload.content || '分析执行失败',
                         progress: 0,
                         phase: action.payload.phase || '',
+                        updatedAt: action.payload.timestamp,
                     },
                 },
             };
@@ -244,6 +261,7 @@ function analysisReducer(state: AnalysisSession, action: Action): AnalysisSessio
                         content: cleaned,
                         progress: 100,
                         phase: output.phase || 'analysis',
+                        updatedAt: output.created_at,
                     };
                 } else if (output.phase === 'conference') {
                     restoredMessages.push({
@@ -362,11 +380,11 @@ export function useAnalysisStore() {
             }
 
             case 'analysis_start':
-                dispatch({ type: 'AGENT_START', payload: extractAgentData(data) });
+                dispatch({ type: 'AGENT_START', payload: { ...extractAgentData(data), timestamp } });
                 break;
 
             case 'analysis_progress':
-                dispatch({ type: 'AGENT_PROGRESS', payload: extractAgentData(data) });
+                dispatch({ type: 'AGENT_PROGRESS', payload: { ...extractAgentData(data), timestamp } });
                 break;
 
             case 'analysis_complete':
@@ -381,7 +399,7 @@ export function useAnalysisStore() {
                 break;
 
             case 'analysis_failed':
-                dispatch({ type: 'AGENT_FAILED', payload: extractAgentData(data) });
+                dispatch({ type: 'AGENT_FAILED', payload: { ...extractAgentData(data), timestamp } });
                 break;
 
             case 'conference_start':

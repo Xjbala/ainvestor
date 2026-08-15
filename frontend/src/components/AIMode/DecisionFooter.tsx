@@ -1,7 +1,7 @@
 import './AIMode.css';
 
 interface DecisionFooterProps {
-    status?: 'analyzing' | 'ready';
+    status?: 'idle' | 'analyzing' | 'ready';
     targetPrice?: number | string;
     currentPrice?: number;
     recommendation?: string;
@@ -34,9 +34,10 @@ export function DecisionFooter({
     }
 
     const isAnalyzing = _status === 'analyzing';
+    const isIdle = _status === 'idle';
 
     // 一致性校验：评级与预期收益方向矛盾时显示警告
-    const hasContradiction = !isAnalyzing && (() => {
+    const hasContradiction = !isAnalyzing && !isIdle && (() => {
         const bullRatings = ['强烈推荐', '推荐', '买入', '增持'];
         const bearRatings = ['谨慎', '回避', '卖出', '减持'];
         const isBull = bullRatings.some(r => recommendation.includes(r));
@@ -82,9 +83,11 @@ export function DecisionFooter({
         <footer className="decision-footer">
             <div className="footer-top">
                 <div className="status-summary">
-                    <h3>{isAnalyzing ? '投资决策报告编制中' : '投资决策报告就绪'}</h3>
+                    <h3>{isIdle ? '等待启动分析' : isAnalyzing ? '投资决策报告编制中' : '投资决策报告就绪'}</h3>
                     <p>
-                        {isAnalyzing
+                        {isIdle
+                            ? '启动分析后，系统将在此汇总估值、风险与投资建议。'
+                            : isAnalyzing
                             ? '四位智能体正在进行深度分析，预计1-2分钟内完成报告编制。'
                             : (recommendation && recommendation !== '分析中' && recommendation !== '—'
                                 ? `四位智能体已完成分析，综合评级：${recommendation}。请结合报告详情与风险提示决策。`
@@ -101,10 +104,10 @@ export function DecisionFooter({
                             {isStopRequested ? '正在停止...' : '⏹ 停止分析'}
                         </button>
                     )}
-                    <button className="btn-secondary" onClick={onViewDetail} disabled={isAnalyzing}>
+                    <button className="btn-secondary" onClick={onViewDetail} disabled={isAnalyzing || isIdle}>
                         👁 查看详情
                     </button>
-                    <button className="btn-primary" onClick={onExportPDF} disabled={isAnalyzing}>
+                    <button className="btn-primary" onClick={onExportPDF} disabled={isAnalyzing || isIdle}>
                         📥 导出PDF报告
                     </button>
                 </div>
@@ -127,7 +130,9 @@ export function DecisionFooter({
                 <div className="stat-item">
                     <div className="stat-label">投资建议</div>
                     <div className={`stat-value action-buy ${isAnalyzing ? 'analyzing' : ''}`}>
-                        {isAnalyzing && (recommendation === '分析中' || recommendation === '分析中...')
+                        {isIdle
+                            ? '—'
+                            : isAnalyzing && (recommendation === '分析中' || recommendation === '分析中...')
                             ? '分析中...'
                             : (recommendation || '—')}
                     </div>
