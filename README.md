@@ -31,6 +31,7 @@
 - 🎯 **五级评级体系** - 强烈推荐、推荐、中性、谨慎、回避
 - 📐 **专业估值建模** - DCF、剩余收益、相对估值、SOTP 分部加总、多方法三角验证
 - 📰 **定性 + 定量双底座** - 定量回答“值多少钱”，定性补足护城河、风险、展望与分部结构
+- 🔐 **订阅与配额体系** - 匿名免费配额（滚动 30 天）、登录用户 plan 配额、admin 手动开通订阅；AI 分析与专家估值按调用计次，超额引导注册或升级
 
 ## 🖥️ 系统界面
 
@@ -225,7 +226,59 @@ VALUATION_V2=true
 
 # 年报PDF解析 (定性数据采集需要)
 MINERU_API_KEY=your-mineru-api-key
+
+# 订阅与配额 (可选，有默认值)
+# 匿名用户配额（滚动 30 天窗口）
+ANON_AI_ANALYSIS_QUOTA=1
+ANON_EXPERT_QUOTA=5
+ANON_WINDOW_DAYS=30
+ANON_COOKIE_NAME=anon_id
+FREE_PLAN_CODE=free
 ```
+
+### 订阅与配额体系
+
+系统通过 **plan（计划）+ subscription（订阅）+ quota_grant（额度发放）+ usage_events（计量事件流）** 四张表实现订阅制与按调用计次。
+
+**配额规则**：
+
+| 身份 | 窗口 | 额度来源 |
+|------|------|----------|
+| 匿名用户（cookie UUID + IP 哈希） | 滚动 30 天 | 环境变量 `ANON_AI_ANALYSIS_QUOTA` / `ANON_EXPERT_QUOTA` |
+| 登录但无订阅 | 自然月 | free plan 的月度配额 |
+| 登录且有 active 订阅 | subscription.current_period | quota_grant 发放的额度 |
+
+**超额行为**：
+
+- 匿名用户超额 → HTTP 402 + WebSocket `quota_exceeded` 事件，前端弹注册引导
+- 登录用户超额 → HTTP 429，前端弹升级订阅引导
+- 注册成功时，匿名期间的用量一次性迁移到新账号，配额不浪费
+
+**计次资源**：AI 多 Agent 分析、专家模式估值、数据 API（预留，阶段 C）
+
+**管理后台**：admin/superadmin 在前端侧栏可见「订阅管理」入口，可手动开通/续期/取消订阅。续期会在 `quota_grants` 表追加一行（append-only），历史可追溯。
+
+### 初始化订阅计划（生产环境必做）
+
+首次部署或修改计划额度时执行，幂等：
+
+```bash
+# 1. 先审计（不写库）
+uv run python -m backend.scripts.bootstrap_plans --dry-run
+
+# 2. 确认无误后执行写入
+uv run python -m backend.scripts.bootstrap_plans
+```
+
+默认创建三档计划：
+
+| 计划 | AI 分析/月 | 专家估值/月 | 数据 API/月 | 价格 |
+|------|-----------|------------|-------------|------|
+| free | 3 | 10 | 0 | ¥0 |
+| pro | 50 | 200 | 1000 | ¥99 |
+| enterprise | 500 | 2000 | 20000 | ¥990 |
+
+修改 `backend/scripts/bootstrap_plans.py` 中的 `DEFAULT_PLANS` 重新执行即可更新额度。
 
 ### 初始化基础数据（生产环境必做）
 
@@ -409,9 +462,26 @@ Studio 不可用时，AI 分析会继续执行，仅在后端日志中记录追�
 | GET | `/api/analysis/operating/{stock_code}` | 营运能力 |
 | GET | `/api/analysis/summary/{stock_code}` | 四维综合分析 |
 
+### 认证与订阅
+
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| POST | `/api/auth/register` | 注册（自动迁移匿名期用量） |
+| POST | `/api/auth/login` | 登录 |
+| POST | `/api/auth/refresh` | 刷新 access token |
+| GET | `/api/auth/me` | 当前用户信息 |
+| GET | `/api/me/entitlements` | 当前身份的订阅状态与各资源剩余配额（匿名也可访问） |
+| GET | `/api/admin/plans` | 列出所有计划（admin） |
+| GET | `/api/admin/subscriptions` | 列出订阅记录（admin） |
+| POST | `/api/admin/subscriptions` | 开通订阅（admin，同步发放 quota_grant） |
+| POST | `/api/admin/subscriptions/{id}/extend` | 续期订阅（admin，可切换 plan） |
+| PATCH | `/api/admin/subscriptions/{id}/status` | 更新订阅状态（admin） |
+
 ### WebSocket
 
 连接地址: `ws://localhost:8765`
+
+登录用户在连接 URL 拼 `?token=<JWT>`，匿名用户靠后端 `Set-Cookie: anon_id=...` 自动识别。
 
 ```json
 // 发送分析请求
@@ -430,6 +500,12 @@ Studio 不可用时，AI 分析会继续执行，仅在后端日志中记录追�
 ```bash
 # 运行纯逻辑单元测试（无需数据库/网络/LLM）
 uv run python -m unittest discover -s tests -p "test_*.py" -v
+
+# 单独运行配额单测（in-memory SQLite，覆盖窗口语义/402/429/迁移）
+uv run python -m unittest tests.test_quota -v
+
+# 前端测试
+cd frontend && npm run test
 ```
 
 ## 🤝 贡献指南
