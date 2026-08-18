@@ -17,7 +17,13 @@ interface AuthState {
 
     bootstrap: () => Promise<void>;
     login: (username: string, password: string) => Promise<void>;
-    register: (username: string, email: string, password: string) => Promise<void>;
+    register: (
+        username: string,
+        email: string,
+        password: string,
+        code: string,
+        turnstileToken: string,
+    ) => Promise<void>;
     logout: () => Promise<void>;
     clearError: () => void;
 }
@@ -55,10 +61,16 @@ export const useAuthStore = create<AuthState>((set) => ({
         }
     },
 
-    register: async (username: string, email: string, password: string) => {
+    register: async (
+        username: string,
+        email: string,
+        password: string,
+        code: string,
+        turnstileToken: string,
+    ) => {
         set({ isLoading: true, error: null });
         try {
-            const { user } = await authApi.register(username, email, password);
+            const { user } = await authApi.register(username, email, password, code, turnstileToken);
             set({ user, isAuthenticated: true, isLoading: false });
         } catch (e: any) {
             const msg = e?.message || '注册失败';

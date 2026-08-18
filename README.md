@@ -234,6 +234,14 @@ ANON_EXPERT_QUOTA=5
 ANON_WINDOW_DAYS=30
 ANON_COOKIE_NAME=anon_id
 FREE_PLAN_CODE=free
+
+# 注册安全 (可选，有默认值)
+# 邮箱验证码邮件发送，未配置时验证码打印到日志（开发环境）
+# RESEND_API_KEY=re_xxxxx
+# MAIL_FROM=Ainvestor <noreply@ainvestor.dev>
+# Cloudflare Turnstile 人机验证，未配置时跳过校验（开发环境）
+# TURNSTILE_SITE_KEY=0x4AAAAAAAxxxxxxx
+# TURNSTILE_SECRET_KEY=0x4AAAAAAAxxxxxxx
 ```
 
 ### 订阅与配额体系

@@ -276,6 +276,7 @@ class UserRepository:
         email: str,
         hashed_password: str,
         role: UserRole = UserRole.USER,
+        email_verified: bool = False,
     ) -> User:
         """
         创建用户
@@ -285,6 +286,7 @@ class UserRepository:
             email: 邮箱
             hashed_password: 加密后的密码
             role: 用户角色
+            email_verified: 邮箱是否已验证
 
         Returns:
             创建的用户对象
@@ -294,6 +296,7 @@ class UserRepository:
             email=email,
             hashed_password=hashed_password,
             role=role,
+            email_verified=email_verified,
         )
 
         self.session.add(user)

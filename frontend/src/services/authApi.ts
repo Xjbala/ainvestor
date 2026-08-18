@@ -182,11 +182,35 @@ async function authFetchJson<T>(url: string, init: RequestInit = {}): Promise<T>
 // ============================================================
 
 export const authApi = {
-    async register(username: string, email: string, password: string): Promise<TokenResponse & { user: UserInfo }> {
+    async getTurnstileConfig(): Promise<{ site_key: string; enabled: boolean }> {
+        const res = await fetch(`${API_BASE}/auth/turnstile-config`);
+        if (!res.ok) return { site_key: '', enabled: false };
+        return res.json();
+    },
+
+    async sendCode(email: string, turnstileToken: string): Promise<void> {
+        const res = await fetch(`${API_BASE}/auth/send-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, turnstile_token: turnstileToken }),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text);
+        }
+    },
+
+    async register(
+        username: string,
+        email: string,
+        password: string,
+        code: string,
+        turnstileToken: string,
+    ): Promise<TokenResponse & { user: UserInfo }> {
         const res = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password }),
+            body: JSON.stringify({ username, email, password, code, turnstile_token: turnstileToken }),
             credentials: 'include', // 让后端能读到 anon_id cookie 做配额迁移
         });
         if (!res.ok) {

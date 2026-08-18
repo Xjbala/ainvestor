@@ -123,6 +123,11 @@ class User(Base):
         nullable=False,
         comment="账户是否激活"
     )
+    email_verified: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        comment="邮箱是否已验证"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),

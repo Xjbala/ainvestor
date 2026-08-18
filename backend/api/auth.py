@@ -21,17 +21,50 @@ from ..core.auth import (
     TokenResponse,
 )
 from ..core.dependencies import get_current_user
+from ..core.email_service import send_verification_code_email
 from ..core.quota import (
     ANON_COOKIE_NAME,
     hash_anonymous_key,
     migrate_anonymous_usage,
 )
+from ..core.rate_limiter import rate_limiter
+from ..core.turnstile import verify_turnstile_token
+from ..core.verification_codes import verification_code_store
 from ..persistence.db import get_db_session
 from ..persistence.orm_models import User, UserRole
 from ..persistence.repository import UserRepository
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["认证"])
+
+
+# ============================================================
+# 限流配置
+# ============================================================
+
+# 发送验证码：同一 IP 每分钟 1 次、每小时 5 次；同一邮箱每分钟 1 次、每小时 3 次
+SEND_CODE_IP_LIMITS = [(1, 60), (5, 3600)]
+SEND_CODE_EMAIL_LIMITS = [(1, 60), (3, 3600)]
+# 注册：同一 IP 每小时 3 次、每天 10 次
+REGISTER_IP_LIMITS = [(3, 3600), (10, 86400)]
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _check_rate_limits(key: str, limits: list[tuple[int, int]], label: str) -> None:
+    for max_req, window in limits:
+        allowed, remaining = rate_limiter.check(key, max_req, window)
+        if not allowed:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"{label}过于频繁，请稍后再试",
+                headers={"Retry-After": str(window)},
+            )
 
 
 # ============================================================
@@ -43,6 +76,14 @@ class RegisterRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=50, description="用户名")
     email: EmailStr = Field(..., description="邮箱地址")
     password: str = Field(..., min_length=6, max_length=100, description="密码")
+    code: str = Field(..., min_length=6, max_length=6, description="邮箱验证码")
+    turnstile_token: str = Field(..., description="Turnstile 人机验证 token")
+
+
+class SendCodeRequest(BaseModel):
+    """发送验证码请求"""
+    email: EmailStr = Field(..., description="邮箱地址")
+    turnstile_token: str = Field(..., description="Turnstile 人机验证 token")
 
 
 class LoginRequest(BaseModel):
@@ -78,6 +119,72 @@ class MessageResponse(BaseModel):
 # 认证路由
 # ============================================================
 
+@router.get("/turnstile-config")
+async def get_turnstile_config():
+    """返回 Turnstile site key（公开值，前端渲染 widget 用）"""
+    from ..core.turnstile import get_turnstile_site_key, is_turnstile_enabled
+    return {
+        "site_key": get_turnstile_site_key(),
+        "enabled": is_turnstile_enabled(),
+    }
+
+
+@router.post("/send-code", response_model=MessageResponse, status_code=status.HTTP_200_OK)
+async def send_verification_code(
+    request: SendCodeRequest,
+    http_request: Request,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """
+    发送邮箱验证码
+
+    注册前调用，向指定邮箱发送 6 位数字验证码。
+    受 IP 和邮箱双重频率限制保护。
+    """
+    ip = _client_ip(http_request)
+
+    # IP 频率限制
+    _check_rate_limits(f"sendcode:ip:{ip}", SEND_CODE_IP_LIMITS, "操作")
+
+    # 邮箱频率限制
+    email_key = request.email.lower()
+    _check_rate_limits(f"sendcode:email:{email_key}", SEND_CODE_EMAIL_LIMITS, "操作")
+
+    # Turnstile 校验
+    if not await verify_turnstile_token(request.turnstile_token, remote_ip=ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="人机验证失败，请重试",
+        )
+
+    # 检查邮箱是否已注册
+    user_repo = UserRepository(session)
+    existing = await user_repo.get_by_email(request.email)
+    if existing:
+        # 不暴露邮箱是否已注册，静默返回成功
+        logger.info("send-code: 邮箱已注册，静默返回成功 email=%s", request.email)
+        return MessageResponse(message="验证码已发送，请查收邮件")
+
+    # 生成并发送验证码
+    code = verification_code_store.issue(request.email)
+    try:
+        await send_verification_code_email(request.email, code)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="验证码发送失败，请稍后重试",
+        )
+
+    # 消耗限流配额（校验通过后才消耗）
+    for max_req, window in SEND_CODE_IP_LIMITS:
+        rate_limiter.consume(f"sendcode:ip:{ip}", max_req, window)
+    for max_req, window in SEND_CODE_EMAIL_LIMITS:
+        rate_limiter.consume(f"sendcode:email:{email_key}", max_req, window)
+
+    logger.info("验证码已发送 email=%s ip=%s", request.email, ip)
+    return MessageResponse(message="验证码已发送，请查收邮件")
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
@@ -88,9 +195,29 @@ async def register(
     """
     用户注册
 
-    创建新用户账户并返回认证令牌。
+    需先调用 /api/auth/send-code 获取邮箱验证码。
+    创建新用户账户（email_verified=True）并返回认证令牌。
     注册时把匿名 cookie 名下的 usage_events 迁移到新用户（配额迁移）。
     """
+    ip = _client_ip(http_request)
+
+    # IP 频率限制
+    _check_rate_limits(f"register:ip:{ip}", REGISTER_IP_LIMITS, "注册")
+
+    # Turnstile 校验
+    if not await verify_turnstile_token(request.turnstile_token, remote_ip=ip):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="人机验证失败，请重试",
+        )
+
+    # 校验验证码
+    if not verification_code_store.verify(request.email, request.code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="验证码错误或已过期",
+        )
+
     user_repo = UserRepository(session)
 
     # 检查用户名是否已存在
@@ -116,7 +243,12 @@ async def register(
         email=request.email,
         hashed_password=hashed_password,
         role=UserRole.USER,
+        email_verified=True,
     )
+
+    # 消耗注册限流配额
+    for max_req, window in REGISTER_IP_LIMITS:
+        rate_limiter.consume(f"register:ip:{ip}", max_req, window)
 
     # 配额迁移：把匿名 cookie 名下的用量迁到新用户，让未登录用过的次数不浪费
     raw_cookie = http_request.cookies.get(ANON_COOKIE_NAME)
