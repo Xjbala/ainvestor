@@ -17,6 +17,7 @@ import { ReportsPage } from './components/Reports/ReportsPage';
 import { AccountPage } from './components/Account/AccountPage';
 import { AdminSubscriptionsPage } from './components/Admin/AdminSubscriptionsPage';
 import { AuthModal } from './components/Common/AuthModal';
+import { IntroAnimation, shouldShowIntro } from './components/Intro/IntroAnimation';
 import { extractInvestmentRecommendations } from './utils/metricExtraction';
 
 // WebSocket服务器地址 - 使用相对路径以适应不同部署环境
@@ -47,6 +48,7 @@ function storeActiveSessionId(sessionId: string | null) {
 function App() {
   // 当前正在分析的股票代码（用于专家模式）
   const [currentTicker, setCurrentTicker] = useState<string | undefined>(undefined);
+  const [showIntro, setShowIntro] = useState(() => shouldShowIntro());
 
   const {
     state,
@@ -246,6 +248,11 @@ function App() {
 
   return (
     <div className="flex bg-background text-foreground font-sans min-h-screen">
+      {/* 系统介绍动画（首次打开时展示） */}
+      {showIntro && (
+        <IntroAnimation onComplete={() => setShowIntro(false)} />
+      )}
+
       {/* Global Sidebar (Left Navigation) */}
       <Sidebar activeMode={mode} onSwitchMode={setMode} />
 
